@@ -2,7 +2,7 @@
 // /api/* (generation and judgment) and plan-declared external checkers —
 // the app layer queues, retries, and marks results provisional.
 
-const CACHE = 'ls-shell-v2';
+const CACHE = 'ls-shell-v3';
 
 const SHELL = [
   '/',
@@ -23,6 +23,7 @@ const SHELL = [
   '/js/session.js',
   '/js/exporter.js',
   '/js/views/today.js',
+  '/js/views/lessons.js',
   '/js/views/progress.js',
   '/js/views/portfolio.js',
   '/js/views/settings.js',

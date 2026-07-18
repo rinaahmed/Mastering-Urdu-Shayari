@@ -41,6 +41,24 @@ export async function resolveMissingData(planId, missingId, note) {
   await db.setMeta(`resolvedMissingNote:${planId}:${missingId}`, note || '');
 }
 
+// currentLessonId is the app's own progress state — not read from the plan
+// JSON, which has no concept of position. Defaulted to the first lesson on
+// import (see exporter.js) and otherwise only ever changed here.
+export async function getCurrentLessonId() {
+  return db.getMeta('currentLessonId');
+}
+
+export async function setCurrentLessonId(lessonId) {
+  return db.setMeta('currentLessonId', lessonId);
+}
+
+// Set only when "Start next lesson" stops on a blocked lesson (see below) —
+// tracks that the CURRENT lesson became current without ever being opened,
+// so the next click retries opening it instead of completing it unseen.
+export async function getPendingOpenLessonId() {
+  return db.getMeta('pendingOpenLessonId', null);
+}
+
 export async function getActiveSession() {
   const sessions = await db.getAllByIndex(STORES.sessions, 'status', 'active');
   return sessions[0] || null;
@@ -54,7 +72,7 @@ export async function startSession() {
     getCompletedLessonIds(plan.id),
     getResolvedMissingIds(plan.id)
   ]);
-  const currentLessonId = await db.getMeta('currentLessonId');
+  const currentLessonId = await getCurrentLessonId();
   const assembled = assembleSession(plan, nodeStates, currentLessonId, completed, resolved);
 
   const session = {
@@ -80,7 +98,7 @@ export async function startSession() {
     flags: assembled.flags
   };
   await db.put(STORES.sessions, session);
-  await db.setMeta('currentLessonId', assembled.lesson.id);
+  await setCurrentLessonId(assembled.lesson.id);
   return session;
 }
 
@@ -93,6 +111,96 @@ export function findItem(plan, id) {
 
 export async function saveSession(session) {
   await db.put(STORES.sessions, session);
+}
+
+// ---- lesson-list navigation ----
+
+// Jump directly to a lesson from the flat lesson list, making it current.
+// If a different lesson's session is active, abandon it (only one active
+// session at a time); resume the same lesson's in-progress session if there
+// is one, otherwise start fresh.
+export async function jumpToLesson(lessonId) {
+  const active = await getActiveSession();
+  if (active && active.lessonId !== lessonId) {
+    await abandonSession(active);
+  }
+  await setCurrentLessonId(lessonId);
+  if (active && active.lessonId === lessonId) return active;
+  return startSession();
+}
+
+// "Start next lesson": force-marks the current lesson done — regardless of
+// whether every screen was seen, this is a deliberate override — advances
+// currentLessonId to the next lesson in plan order, and opens it.
+//
+// currentLessonId always advances to that immediate next lesson, whether or
+// not it is blocked. If it IS blocked, no session is started for it — the
+// caller gets { type: 'blocked', ... } and must show the dependency clearly.
+// It never continues silently past a blocked lesson to reach a later,
+// unblocked one.
+//
+// Special case: a lesson can become current purely because a PREVIOUS click
+// stopped here while it was blocked — it was never actually opened. Marking
+// that lesson "done" the moment its dependency is resolved, without ever
+// showing its content, would skip it in all but name. So if the current
+// lesson is the one we're still pending-open on, this click instead retries
+// OPENING it (not completing it); only once it has actually been opened does
+// a later click complete it and advance, per the normal behaviour above.
+export async function startNextLesson() {
+  const plan = await getActivePlan();
+  if (!plan) throw new Error('No active plan.');
+  const lessons = flattenLessons(plan);
+  const currentId = await getCurrentLessonId();
+  const idx = lessons.findIndex((l) => l.id === currentId);
+  if (idx === -1) throw new Error('Current lesson not found in plan.');
+  const current = lessons[idx];
+
+  const active = await getActiveSession();
+  const pendingOpenId = await getPendingOpenLessonId();
+
+  if (pendingOpenId === currentId) {
+    const resolved = await getResolvedMissingIds(plan.id);
+    if (current.blockedOn && !resolved.has(current.blockedOn)) {
+      if (active && active.lessonId !== currentId) await abandonSession(active);
+      const missingData = (plan.missingData || []).find((m) => m.id === current.blockedOn);
+      return { type: 'blocked', lesson: current, missingData };
+    }
+    await db.setMeta('pendingOpenLessonId', null);
+    if (active && active.lessonId === currentId) {
+      return { type: 'started', session: active };
+    }
+    if (active) await abandonSession(active);
+    const session = await startSession();
+    return { type: 'started', session };
+  }
+
+  if (active) await abandonSession(active);
+
+  await db.put(STORES.lessonState, {
+    id: currentId,
+    planId: plan.id,
+    status: 'complete',
+    completedAt: Date.now()
+  });
+
+  if (idx + 1 >= lessons.length) {
+    await db.setMeta('pendingOpenLessonId', null);
+    return { type: 'plan-complete' };
+  }
+
+  const next = lessons[idx + 1];
+  await setCurrentLessonId(next.id);
+
+  const resolved = await getResolvedMissingIds(plan.id);
+  if (next.blockedOn && !resolved.has(next.blockedOn)) {
+    await db.setMeta('pendingOpenLessonId', next.id);
+    const missingData = (plan.missingData || []).find((m) => m.id === next.blockedOn);
+    return { type: 'blocked', lesson: next, missingData };
+  }
+
+  await db.setMeta('pendingOpenLessonId', null);
+  const session = await startSession();
+  return { type: 'started', session };
 }
 
 // ---- navigation ----
@@ -362,7 +470,7 @@ export async function endSession(session) {
     const lessons = flattenLessons(plan);
     const i = lessons.findIndex((l) => l.id === session.lessonId);
     if (i >= 0 && i + 1 < lessons.length) {
-      await db.setMeta('currentLessonId', lessons[i + 1].id);
+      await setCurrentLessonId(lessons[i + 1].id);
     }
   }
   return session;

@@ -165,7 +165,6 @@ select, input.answer, textarea.answer {
 textarea.answer { min-height: 90px; resize: vertical; font-family: var(--serif); }
 select { width: auto; max-width: 100%; }
 
-.lesson-select { display: block; margin: 12px 0; }
 .toggle-row { display: flex; align-items: center; gap: 12px; min-height: 48px; }
 .toggle-row input[type="checkbox"] { width: 28px; height: 28px; }
 
@@ -247,6 +246,47 @@ select { width: auto; max-width: 100%; }
 }
 .pager-btn { flex: 1; max-width: 40%; }
 .pager-pos { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- lessons (primary navigation: flat list, no week grouping) ---------- */
+
+.lesson-action-card { margin-bottom: 18px; }
+.lesson-action-note { border: var(--border-w) solid var(--ink); padding: 10px 14px; margin-top: 12px; }
+.lesson-action-note p { margin: 6px 0 0; }
+.lesson-action-note p:first-child { margin-top: 0; }
+.lesson-action-note.blocked { border-style: dashed; }
+.lesson-action-note.done { border-style: solid; border-width: calc(var(--border-w) + 2px); }
+
+.lesson-list { display: flex; flex-direction: column; gap: 10px; }
+
+button.lesson-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  text-align: left;
+  border-style: solid;
+}
+.lesson-marker {
+  flex-shrink: 0;
+  width: 1.8em;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.lesson-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lesson-title { font-family: var(--serif); font-size: 1.05rem; }
+.lesson-meta { color: var(--muted); font-size: 0.85rem; }
+
+button.lesson-row.done .lesson-title { font-weight: 400; }
+
+button.lesson-row.current { border-width: calc(var(--border-w) + 2px); }
+button.lesson-row.current .lesson-title { font-weight: 700; }
+
+button.lesson-row.blocked { border-style: dashed; }
+button.lesson-row.blocked .lesson-title,
+button.lesson-row.blocked .lesson-meta { color: var(--muted); }
 
 /* ---------- progress ---------- */
 

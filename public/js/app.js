@@ -7,12 +7,14 @@ import { seedDefaultPlan } from './exporter.js';
 import { installQueueFlusher } from './api.js';
 import { applyEvaluation, getActivePlan } from './session.js';
 import { renderToday } from './views/today.js';
+import { renderLessons } from './views/lessons.js';
 import { renderProgress } from './views/progress.js';
 import { renderPortfolio } from './views/portfolio.js';
 import { renderSettings } from './views/settings.js';
 
 const routes = {
   '#today': renderToday,
+  '#lessons': renderLessons,
   '#progress': renderProgress,
   '#portfolio': renderPortfolio,
   '#settings': renderSettings

@@ -5,7 +5,7 @@
 import { db, STORES } from '../db.js';
 import {
   getActivePlan, getNodeStates, getErrorCategories, getActiveSession,
-  getCompletedLessonIds, startSession, submitResponse, resolveFlag,
+  startSession, submitResponse, resolveFlag,
   endSession, addRevision, saveReflection, goTo, markScreenDone,
   findDrillType, findItem, saveSession
 } from '../session.js';
@@ -76,27 +76,14 @@ export async function renderToday(root) {
 
 async function renderStart(root, plan) {
   const lessons = flattenLessons(plan);
-  const completed = await getCompletedLessonIds(plan.id);
   const currentLessonId = await db.getMeta('currentLessonId');
   const lesson = lessons.find((l) => l.id === currentLessonId) || lessons[0];
 
   const card = el('section', 'card start-card');
   card.append(el('h2', 'serif', 'Today'));
-  card.append(el('p', 'muted', `${lesson.weekTitle} · ${lesson.title}`));
+  card.append(el('p', 'muted', `Unit ${lesson.unitNumber} · ${lesson.title}`));
   card.append(el('p', 'serif', lesson.objective));
   if (lesson.estimatedMinutes) card.append(el('p', 'muted small', `~${lesson.estimatedMinutes} min`));
-
-  const lessonSel = el('select');
-  lessons.forEach((l) => {
-    const o = el('option', null, `${completed.has(l.id) ? '● ' : ''}${l.weekTitle} — ${l.title}`);
-    o.value = l.id;
-    if (l.id === lesson.id) o.selected = true;
-    lessonSel.append(o);
-  });
-  lessonSel.onchange = () => db.setMeta('currentLessonId', lessonSel.value);
-  const selWrap = el('label', 'lesson-select');
-  selWrap.append(el('span', 'muted', 'Lesson: '), lessonSel);
-  card.append(selWrap);
 
   const btn = el('button', 'primary big', 'Begin session');
   btn.onclick = async () => {
@@ -105,6 +92,11 @@ async function renderStart(root, plan) {
     renderToday(root);
   };
   card.append(btn);
+
+  const allLink = el('button', null, 'All lessons ›');
+  allLink.onclick = () => { location.hash = '#lessons'; };
+  card.append(allLink);
+
   root.append(card);
 }
 

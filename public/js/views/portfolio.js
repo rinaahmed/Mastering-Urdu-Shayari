@@ -26,7 +26,7 @@ export async function renderPortfolio(root) {
   const lessons = flattenLessons(plan);
   const lessonTitle = (id) => {
     const l = lessons.find((x) => x.id === id);
-    return l ? `${l.weekTitle} — ${l.title}` : id;
+    return l ? `Unit ${l.unitNumber} — ${l.title}` : id;
   };
 
   const head = el('div', 'view-head');

@@ -274,12 +274,20 @@ export function validatePlan(plan) {
 }
 
 // Ordered flat list of lessons for navigation and the teaching-order audit.
+// weekId/weekTitle are read straight from the plan's own phases→weeks→lessons
+// structure (untouched — the schema stays as-is). unitNumber is a derived,
+// display-only field (not part of the plan schema): a running 1-based count
+// of weeks across the whole plan, in plan order. The app's own UI refers to
+// this grouping level as "unit"; only the schema's internal field names keep
+// the original "week" wording.
 export function flattenLessons(plan) {
   const out = [];
+  let unitNumber = 0;
   for (const ph of plan.phases || []) {
     for (const wk of ph.weeks || []) {
+      unitNumber += 1;
       for (const ls of wk.lessons || []) {
-        out.push({ ...ls, phaseId: ph.id, phaseTitle: ph.title, weekId: wk.id, weekTitle: wk.title });
+        out.push({ ...ls, phaseId: ph.id, phaseTitle: ph.title, weekId: wk.id, weekTitle: wk.title, unitNumber });
       }
     }
   }
