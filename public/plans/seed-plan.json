@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "id": "urdu-shayari-behr-o-bayaan-v2",
-  "title": "Mastering Urdu Shayari — Behr o Bayaan",
+  "title": "Bayaz",
   "description": "A structured path from syllable weights through behr mastery to ghazal composition. Seed plan #1, schema v2. Item-bank answers are plan data — verify or replace them with your own export.",
   "settings": {
     "flagAttemptThreshold": 8,

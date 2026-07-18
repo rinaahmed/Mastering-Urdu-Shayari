@@ -1,7 +1,7 @@
 {
-  "name": "Learning Sessions",
-  "short_name": "Sessions",
-  "description": "A personal learning-session engine. Plans are data; the app is domain-agnostic.",
+  "name": "Bayaz",
+  "short_name": "Bayaz",
+  "description": "Bayaz — a personal learning-session engine. Plans are data; the app is domain-agnostic.",
   "start_url": "/#today",
   "display": "fullscreen",
   "orientation": "any",

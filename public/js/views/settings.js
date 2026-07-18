@@ -6,6 +6,7 @@ import { db, STORES } from '../db.js';
 import { importPlan, convertV1, downloadFullExport, downloadJson, restoreFromExport } from '../exporter.js';
 import { queueSize } from '../api.js';
 import { getActivePlan, getResolvedMissingIds, resolveMissingData, createDerivedNode } from '../session.js';
+import { getVersionInfo, formatVersionBadge, formatBuiltAt } from '../version.js';
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -30,6 +31,16 @@ function filePicker(accept, onText) {
 export async function renderSettings(root) {
   root.innerHTML = '';
   const plan = await getActivePlan();
+
+  // ---- About ----
+  const aboutCard = el('section', 'card');
+  aboutCard.append(el('h2', null, 'About'));
+  const versionInfo = await getVersionInfo();
+  aboutCard.append(el('p', null, 'Bayaz'));
+  aboutCard.append(el('p', 'muted small', versionInfo
+    ? `${formatVersionBadge(versionInfo)} — built ${formatBuiltAt(versionInfo)}`
+    : 'Version unknown — /version.json unreachable.'));
+  root.append(aboutCard);
 
   // ---- Display mode ----
   const displayCard = el('section', 'card');

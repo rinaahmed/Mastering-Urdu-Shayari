@@ -65,6 +65,18 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.topbar-status {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.version-badge {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
 .offline-badge {
   font-size: 0.8rem;
   font-weight: 700;

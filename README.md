@@ -1,4 +1,4 @@
-# Learning Sessions
+# Bayaz
 
 A domain-agnostic, offline-first personal learning-session engine, built as a PWA. Vanilla JS/HTML/CSS, no framework, IndexedDB for storage, Cloudflare Pages plus a Worker (Pages Functions) proxying the Anthropic API.
 
@@ -55,6 +55,19 @@ One content block or drill per screen with explicit Back/Next — no long scroll
 1. Cloudflare Pages project → build command none, output directory `public`; `functions/` is picked up automatically as the Worker.
 2. Pages → Settings → Variables: `ANTHROPIC_API_KEY` (secret — only here, never the browser), optional `ANTHROPIC_MODEL` (default `claude-opus-4-8`). Retry the deployment after adding secrets.
 3. Local dev: `npx wrangler pages dev public` with a `.dev.vars` file.
+
+## Versioning
+
+There is no build step, so there's no git SHA or build number available at runtime to derive a version from automatically. Instead `public/version.json` is a plain committed file, bumped by hand as the **last step of every push**:
+
+```json
+{
+  "version": "YYYY.MM.DD.HHMM",
+  "builtAt": "<ISO 8601 UTC timestamp>"
+}
+```
+
+`js/version.js` fetches it with `cache: 'no-store'` (and the service worker fetches it network-first) so the badge always reflects the deployed file, not a stale cache. It's shown in the topbar (links to Settings) and in the Settings → About card, so a quick glance confirms whether the tab is showing the latest deploy.
 
 ## Non-negotiables held
 

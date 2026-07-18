@@ -2,16 +2,18 @@
 // /api/* (generation and judgment) and plan-declared external checkers —
 // the app layer queues, retries, and marks results provisional.
 
-const CACHE = 'ls-shell-v3';
+const CACHE = 'ls-shell-v4';
 
 const SHELL = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/version.json',
   '/css/app.css',
   '/icons/icon.svg',
   '/fonts/noto-naskh-arabic.woff2',
   '/js/app.js',
+  '/js/version.js',
   '/js/db.js',
   '/js/schema.js',
   '/js/migrate.js',
@@ -53,6 +55,20 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
   if (url.origin !== location.origin) return;
   if (event.request.method !== 'GET') return;
+
+  // version.json is how the app tells the user which deploy they're looking
+  // at, so it must be network-first — cache-first would let a stale badge
+  // survive indefinitely. Fall back to the cached copy only when offline.
+  if (url.pathname === '/version.json') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        return res;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cached) => {
