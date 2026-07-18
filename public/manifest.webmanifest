@@ -1,0 +1,14 @@
+{
+  "name": "Mastering Urdu Shayari",
+  "short_name": "Shayari",
+  "description": "Personal learning-session engine for Urdu shayari — behr, taqti, and composition.",
+  "start_url": "/#today",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#14101c",
+  "theme_color": "#1a1423",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
