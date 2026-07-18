@@ -1,7 +1,8 @@
 // Service worker: offline-first app shell. Everything works offline except
-// /api/* (generation and judgment), which the app queues and retries itself.
+// /api/* (generation and judgment) and plan-declared external checkers —
+// the app layer queues, retries, and marks results provisional.
 
-const CACHE = 'mus-shell-v1';
+const CACHE = 'ls-shell-v2';
 
 const SHELL = [
   '/',
@@ -9,9 +10,11 @@ const SHELL = [
   '/manifest.webmanifest',
   '/css/app.css',
   '/icons/icon.svg',
+  '/fonts/noto-naskh-arabic.woff2',
   '/js/app.js',
   '/js/db.js',
   '/js/schema.js',
+  '/js/migrate.js',
   '/js/ledger.js',
   '/js/checkers.js',
   '/js/assembler.js',
@@ -23,7 +26,8 @@ const SHELL = [
   '/js/views/progress.js',
   '/js/views/portfolio.js',
   '/js/views/settings.js',
-  '/plans/urdu-shayari-plan.json'
+  '/plans/seed-plan.json',
+  '/plans/plan.schema.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,18 +47,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // API calls are network-only — the app layer handles queue-and-retry.
+  // API and any cross-origin call (external checkers) are network-only —
+  // the app layer handles queue-and-retry and provisional fallbacks.
   if (url.pathname.startsWith('/api/')) return;
-
+  if (url.origin !== location.origin) return;
   if (event.request.method !== 'GET') return;
 
-  // Cache-first for the shell, falling back to network (and caching same-origin
-  // responses opportunistically).
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((res) => {
-        if (res.ok && url.origin === location.origin) {
+        if (res.ok) {
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(event.request, copy));
         }

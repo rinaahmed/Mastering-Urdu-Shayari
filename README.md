@@ -1,64 +1,69 @@
-# Mastering Urdu Shayari
+# Learning Sessions
 
-A personal learning-session engine for Urdu shayari, built as an offline-first PWA. Vanilla JS/HTML/CSS, no framework, IndexedDB for storage, deployed on Cloudflare Pages with a Cloudflare Worker (Pages Functions) proxying the Anthropic API.
+A domain-agnostic, offline-first personal learning-session engine, built as a PWA. Vanilla JS/HTML/CSS, no framework, IndexedDB for storage, Cloudflare Pages plus a Worker (Pages Functions) proxying the Anthropic API.
 
-**Core principle:** the app owns all state. The Claude API is stateless and receives a freshly assembled context payload each call. Plans are data files, never code.
+**Core principles:**
+- The app owns all state. The Claude API is stateless and receives a freshly assembled context payload each call.
+- Plans are data files, never code. The plan supplies all vocabulary, teaching content, checker configuration, and tutor method — a French, math, or music-theory plan loads with no code changes. The seed plan happens to teach Urdu prosody; the app doesn't know that.
+- Designed E Ink-first for a Boox Palma (6.13" Carta, greyscale, 300ppi); colour is additive only.
 
 ## Architecture
 
 ```
-public/               the PWA (static, deployed as-is)
-  js/db.js            IndexedDB storage layer (plans, nodes, categories, artifacts, sessions, queue)
-  js/schema.js        plan validation with exact JSON-path error messages
-  js/ledger.js        skill nodes: status, accuracy, confidence decay, spaced repetition, plateau flags
-  js/checkers.js      deterministic checkers + pluggable registry (behr-engine slot)
-  js/assembler.js     session assembly: standing elements → lesson drills → interleaved review → flags
-  js/context.js       generator payload (~3k tokens) and minimal evaluator payload
-  js/api.js           Worker client + offline queue with retry
-  js/session.js       session runtime: deterministic-first grading, ledger deltas, artifacts
-  js/views/           today (default), progress, portfolio, settings
-  plans/urdu-shayari-plan.json   seed plan #1
-functions/api/        the Cloudflare Worker (Pages Functions)
-  generate.js         generator call — full context, returns prose
-  evaluate.js         evaluator call — drill + answer + response only, strict JSON via json_schema
+public/                    the PWA
+  plans/plan.schema.json   JSON Schema (draft 2020-12) for plans — schema v2
+  plans/seed-plan.json     seed plan #1 (Urdu prosody — replaceable data)
+  js/schema.js             runtime validator (exact JSON-path errors) + teaching-order audit
+  js/migrate.js            v1 → v2 plan migration with hand-authoring report
+  js/db.js                 IndexedDB layer (plans, nodes, categories, artifacts, sessions, lesson state, queue)
+  js/ledger.js             skill nodes: status, confidence decay, spaced repetition, taughtIn gate, plateau flags
+  js/checkers.js           checker engine — generic strategies only; plans declare instances
+  js/assembler.js          session assembly into paginated screens
+  js/context.js            generator payload (~3k tokens) and minimal evaluator payload
+  js/api.js                Worker client + offline queue with retry
+  js/session.js            screen runtime: grading, ledger deltas, artifacts, lesson completion
+  js/views/                today (paginated session), progress, portfolio, settings
+functions/api/             the Cloudflare Worker
+  generate.js              generator call — full context, returns prose
+  evaluate.js              evaluator call — prompt + answer + response only, strict JSON via json_schema
 ```
 
-### Two-call architecture
+## Plan schema v2
 
-- **Generator** (`/api/generate`) teaches, hints, explains. Gets the full context payload: current lesson + objective, exercised skill nodes with status/accuracy, matched error categories with real instances, the last 2–3 artifacts with revision chains, calibration examples, and the plan's tutor instructions verbatim.
-- **Evaluator** (`/api/evaluate`) gets only the drill, the correct answer, and the user's response — no teaching context — and returns strict JSON (`correct`, `errorCategoryId` / `newCategory`, `confidenceDelta`, `note`) enforced with structured outputs (`output_config.format` json_schema). Pedagogy is never parsed out of prose.
+Validated on import against `public/plans/plan.schema.json` (structure) plus runtime cross-reference checks, every error with its JSON path. Key concepts:
 
-### Deterministic-first
+- **Lessons carry content.** `content[]` is an ordered array of blocks: `prose` (markdown teaching text), `example` (worked example + commentary), `generate` (a prompt the tutor expands into fresh material at session time), `reflect` (a question; the answer is stored), `drill` (a drillType reference, optionally with specific item ids). A `study` lesson with only prose/generate blocks and no drills is valid. Blocks may declare `direction: "rtl"` and `lang` — the app assumes nothing about script.
+- **Checkers are plan-declared plugins.** The app implements only generic strategies: `exact`, `normalized-exact`, `set-match`, `sequence-diff`, `numeric`, `external`, `judgment`. `external` POSTs `{prompt, answer, userResponse, config}` to a plan-supplied URL expecting `{correct, detail}` — this is how a domain engine (e.g. a scansion engine) is wired in with no code changes. Unreachable external checkers fall back per `fallback` (typically a judgment checker) and the result is marked **provisional**.
+- **`taughtIn` is a hard gate.** Every skill node names the lesson that teaches it. Until that lesson is complete, the node is ineligible for drills and review — prerequisite satisfaction alone never makes a node eligible. The only exception: a lesson's own drill blocks may exercise the nodes it is currently teaching. Enforced in the scheduler.
+- **`missingData` / `blockedOn`.** A plan can declare data it needs; a lesson `blockedOn` one of those ids shows why it can't start instead of starting. Resolved in Settings.
+- **Teaching-order audit.** After validation, any drill or item that exercises a node whose `taughtIn` lesson comes later in plan order refuses the import, with the lesson, item, and both positions named.
 
-Drills marked `deterministic` are graded by local code, never the API: scansion pattern diffs, matra totals, exact-word matching. `hybrid` drills are scanned by code and only the semantic axis is judged by the API. The scansion checker is a pluggable slot — wire in the ShayriWorkshop behr engine via `registerChecker('behr-engine', fn)` in `public/js/checkers.js` to scan raw Urdu text instead of comparing typed patterns.
+`Settings → Convert v1 plan` migrates a v1 file: structure converts automatically; teaching content and external checker URLs are reported as items to author by hand, with a downloadable v2 draft.
 
-### Offline
+## Session engine
 
-Everything works offline except generation and judgment calls. Judgment calls are queued in IndexedDB and retried when the connection returns; deterministic grading never needs a connection. The service worker caches the full app shell.
+Assembled locally into an ordered screen list before any API call: standing elements (skipped while their nodes are untaught) → the current lesson content block by block (or its blocker) → interleaved review of due, *eligible* nodes weighted toward low confidence and capped per `settings.reviewNodeCap` → flat-progress flags ("this isn't moving, change approach") instead of more reps → summary. Completing every lesson screen marks the lesson complete, which is what opens its nodes for future scheduling.
+
+Two API calls only: the **generator** teaches with full context (lesson, node states, error categories with real instances, artifact revision chains, calibration examples, tutor instructions verbatim); the **evaluator** receives prompt + expected answer + user response — no teaching context — and returns strict JSON enforced by `output_config.format` json_schema. Deterministic checkers run locally and never hit the API. Offline judgment calls queue, retry, and stay provisional until applied.
+
+## Display
+
+One content block or drill per screen with explicit Back/Next — no long scroll in the session flow (Progress and Portfolio may scroll). Pure `#000` on `#fff`, 2px+ borders, no CSS transitions or animations anywhere, state distinguished by weight/border-style/icon rather than hue. Serif for teaching prose, sans for chrome; Noto Naskh Arabic is self-hosted for RTL blocks. Portrait: single column, 68ch max, bottom tab bar. Landscape phone (`max-height: 500px`): left nav rail and a two-column screen — content left, response right — so input never scrolls out of view. **E Ink mode** (Settings) forces pure greyscale, kills the accent, and thickens borders; defaults on when `(update: slow)` matches. On colour LCDs a single accent appears via `@media (color)`, never as the sole carrier of meaning.
 
 ## Deploying
 
-1. Create a Cloudflare Pages project pointed at this repo.
-   - Build command: *(none)*
-   - Build output directory: `public`
-   - The `functions/` directory is picked up automatically as Pages Functions (the Worker).
-2. In the Pages project settings → Environment variables, add:
-   - `ANTHROPIC_API_KEY` — **only here, never in the browser.**
-   - `ANTHROPIC_MODEL` — optional, defaults to `claude-opus-4-8`.
-3. Open the deployed URL on the tablet and "Add to Home Screen". The manifest requests fullscreen display for kiosk use.
-
-Local development: `npx wrangler pages dev public` (serves the static site and the Functions together; pass the key with `--binding ANTHROPIC_API_KEY=...` or a `.dev.vars` file).
-
-## Plans
-
-Plans are user-authored JSON, imported in Settings and validated against the schema (`public/js/schema.js`) with per-field error paths. A plan declares: phases → weeks → lessons (id, title, objective, mastery criteria, drill types, skill nodes), standing elements (recurring blocks that open every session — this plan has a 5-minute behr rep), skill nodes, drill types with evaluation modes (`deterministic` / `judgment` / `hybrid`), error categories with real instances, calibration examples, an item bank, and the tutor instructions as a verbatim text block — the method is per-plan data, not app logic.
-
-The bundled seed plan (`public/plans/urdu-shayari-plan.json`) is imported automatically on first run. **Its item-bank answers (taqti patterns, matra totals) are plan data authored for seeding — verify them or replace the file with your own plan export.**
+1. Cloudflare Pages project → build command none, output directory `public`; `functions/` is picked up automatically as the Worker.
+2. Pages → Settings → Variables: `ANTHROPIC_API_KEY` (secret — only here, never the browser), optional `ANTHROPIC_MODEL` (default `claude-opus-4-8`). Retry the deployment after adding secrets.
+3. Local dev: `npx wrangler pages dev public` with a `.dev.vars` file.
 
 ## Non-negotiables held
 
 - API key lives only in the Worker environment.
-- Full JSON export (and restore) of all data in Settings.
-- Offline for everything except generation/judgment; those queue and retry.
-- Plan import validates against the schema and reports errors with exact paths.
-- One screen shows today's session only; "sessions completed" is displayed nowhere.
+- Full JSON export and restore of all data (Settings).
+- Offline for everything except generator/judgment calls and external checkers; queued, retried, marked provisional.
+- Plan import validates against the schema with per-path errors, then runs the teaching-order audit and refuses violating imports.
+- No domain vocabulary in app code, UI strings, or schema field names (`migrate.js` alone references v1's historical wire-format ids, by necessity).
+
+## Seed plan note
+
+`public/plans/seed-plan.json` teaches Urdu prosody with hand-authored lesson content. Its item answers and teaching claims are plan data authored for seeding — verify them or replace the file with your own plan. Its `ck-scan-engine` external checker points at a placeholder URL; set your engine's real endpoint or leave the judgment fallback in place.

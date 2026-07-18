@@ -1,9 +1,9 @@
 // Portfolio view — artifacts browsable by date and by lesson, with full
 // revision chains visible (the sequence is where the learning shows).
+// Scrolling is allowed here.
 
 import { db, STORES } from '../db.js';
-import { getActivePlan } from '../session.js';
-import { markRevision } from '../session.js';
+import { getActivePlan, markRevision } from '../session.js';
 import { flattenLessons } from '../schema.js';
 
 const el = (tag, cls, text) => {
@@ -25,11 +25,11 @@ export async function renderPortfolio(root) {
   const artifacts = await db.getAllByIndex(STORES.artifacts, 'planId', plan.id);
   const lessons = flattenLessons(plan);
   const lessonTitle = (id) => {
-    const l = lessons.find(x => x.id === id);
+    const l = lessons.find((x) => x.id === id);
     return l ? `${l.weekTitle} — ${l.title}` : id;
   };
 
-  const head = el('div', 'session-header');
+  const head = el('div', 'view-head');
   head.append(el('h2', null, 'Portfolio'));
   const toggle = el('div', 'btn-row');
   const byDate = el('button', groupBy === 'date' ? 'primary' : '', 'By date');
@@ -41,7 +41,7 @@ export async function renderPortfolio(root) {
   root.append(head);
 
   if (artifacts.length === 0) {
-    root.append(el('div', 'empty', 'No artifacts yet. Compose drills produce them.'));
+    root.append(el('div', 'empty', 'No artifacts yet. Production drills create them.'));
     return;
   }
 
@@ -66,12 +66,12 @@ export async function renderPortfolio(root) {
 function renderArtifact(a, lessonTitle, root) {
   const wrap = el('div', 'artifact');
   wrap.append(el('p', 'muted small', `${a.date} · ${lessonTitle(a.lessonId)}`));
-  wrap.append(el('p', 'prompt small', a.prompt));
+  wrap.append(el('p', 'prompt small serif', a.prompt));
 
   const chain = el('ol', 'revision-chain');
   (a.revisions || []).forEach((r, i) => {
     const li = el('li', r.accepted === false ? 'rejected' : r.accepted === true ? 'accepted' : '');
-    li.append(el('span', 'rev-text', r.text));
+    li.append(el('span', 'rev-text serif', r.text));
     const meta = [];
     if (r.whatChanged) meta.push(`changed: ${r.whatChanged}`);
     if (r.why) meta.push(`why: ${r.why}`);
@@ -96,6 +96,6 @@ function renderArtifact(a, lessonTitle, root) {
   });
   wrap.append(chain);
 
-  if (a.finalEvaluation) wrap.append(el('p', 'verdict small', `Final: ${a.finalEvaluation}`));
+  if (a.finalEvaluation) wrap.append(el('p', 'small', `Final: ${a.finalEvaluation}`));
   return wrap;
 }

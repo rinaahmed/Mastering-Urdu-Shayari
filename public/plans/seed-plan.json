@@ -1,0 +1,649 @@
+{
+  "schemaVersion": 2,
+  "id": "urdu-shayari-behr-o-bayaan-v2",
+  "title": "Mastering Urdu Shayari — Behr o Bayaan",
+  "description": "A structured path from syllable weights through behr mastery to ghazal composition. Seed plan #1, schema v2. Item-bank answers are plan data — verify or replace them with your own export.",
+  "settings": {
+    "flagAttemptThreshold": 8,
+    "flagAccuracyWindow": 6,
+    "reviewNodeCap": 0.4,
+    "targetContextTokens": 3000,
+    "sessionBlockTarget": 8
+  },
+  "tutorInstructions": "You are a private ustaad for one dedicated student of Urdu shayari. Method, non-negotiable:\n1. Use Urdu technical terms (behr, arkaan, matra, taqti, radeef, qaafiya, misra, sher) in Roman Urdu, glossing in English only the first time a term appears in a session.\n2. Be strict on scansion, warm on meaning. A matra error is an error even in a beautiful line; say so plainly, then honour what the line was reaching for.\n3. When the student repeats a known error, NAME the error category you were given in context (e.g. 'yeh phir wohi qi/baaqi waala trap hai') instead of re-explaining from scratch. Refer to their actual past instances.\n4. Never re-teach a node marked solid. One-line refresher at most.\n5. When teaching a new node, anchor it to a prerequisite node the student already holds solid.\n6. When asked to expand a lesson block, produce fresh material each time — new words, new lines, new angles — never repeat the plan's own examples back.\n7. Prefer asking the student to scan or produce before you demonstrate. Demonstrate only after an attempt.\n8. Keep explanations under 120 words unless the student asks for depth. This is a drill session, not a lecture.\n9. In composition feedback, respond to the revision chain, not just the final line — praise a good trade even when rejected, and say why a rejected revision was still worth trying.\n10. End every teaching turn with exactly one concrete next action for the student.",
+  "missingData": [
+    {
+      "id": "md-voice-models",
+      "title": "Three model poets",
+      "description": "The composition lessons calibrate feedback against poets whose voice the student wants to study. Without them, 'fresh image' judgments have no reference point.",
+      "howToResolve": "Decide on three poets (e.g. Mir, Faiz, Parveen Shakir — your call), then mark this resolved with their names in the note."
+    }
+  ],
+  "checkers": [
+    {
+      "id": "ck-seq",
+      "name": "Digit-pattern sequence diff",
+      "strategy": "sequence-diff",
+      "config": { "tokenizer": "chars", "keep": "0-9" }
+    },
+    {
+      "id": "ck-num",
+      "name": "Numeric total",
+      "strategy": "numeric",
+      "config": { "tolerance": 0 }
+    },
+    {
+      "id": "ck-word",
+      "name": "Normalized word match",
+      "strategy": "normalized-exact",
+      "config": {}
+    },
+    {
+      "id": "ck-judge",
+      "name": "Tutor judgment",
+      "strategy": "judgment"
+    },
+    {
+      "id": "ck-scan-engine",
+      "name": "ShayriWorkshop behr engine",
+      "strategy": "external",
+      "externalUrl": "https://shayri-workshop.example.com/api/scan",
+      "config": { "notation": "digits", "flexFinalVowels": true },
+      "fallback": "ck-judge"
+    }
+  ],
+  "skillNodes": [
+    { "id": "n-syllable-weights", "name": "Syllable weights", "description": "Identify short (1) vs long (2) syllables in Urdu words.", "prerequisites": [], "taughtIn": "ls-1-1" },
+    { "id": "n-matra-counting", "name": "Matra counting", "description": "Total the matra weight of a word or phrase.", "prerequisites": ["n-syllable-weights"], "taughtIn": "ls-1-2" },
+    { "id": "n-flexible-vowels", "name": "Flexible final vowels", "description": "Word-final long vowels (ī/ā/ū/e/o) may scan short at the poet's discretion. Home of the qi/baaqi trap.", "prerequisites": ["n-syllable-weights"], "taughtIn": "ls-2-1" },
+    { "id": "n-izafat", "name": "Izafat weight", "description": "Scan izafat (-e-) correctly: normally short, occasionally long under metrical pressure.", "prerequisites": ["n-matra-counting"], "taughtIn": "ls-2-2" },
+    { "id": "n-arkaan", "name": "Arkaan", "description": "Know the standard feet (fa'oolun 122, mafaa'eelun 1222, faa'ilaatun 2122, mafaa'ilun 1212) by name and pattern.", "prerequisites": ["n-syllable-weights"], "taughtIn": "ls-3-1" },
+    { "id": "n-behr-mutaqarib", "name": "Behr-e-Mutaqarib", "description": "fa'oolun ×4 (122 122 122 122). Recognise and scan lines in it.", "prerequisites": ["n-arkaan", "n-matra-counting"], "taughtIn": "ls-3-1" },
+    { "id": "n-behr-hazaj", "name": "Behr-e-Hazaj", "description": "mafaa'eelun ×4 (1222 ×4). Recognise and scan lines in it.", "prerequisites": ["n-arkaan", "n-matra-counting"], "taughtIn": "ls-4-1" },
+    { "id": "n-scansion-misra", "name": "Full-misra scansion", "description": "Produce a complete taqti of an unseen misra, applying flexible vowels and izafat rules.", "prerequisites": ["n-behr-mutaqarib", "n-behr-hazaj", "n-flexible-vowels", "n-izafat"], "taughtIn": "ls-5-1" },
+    { "id": "n-matra-edit", "name": "Matra repair", "description": "Fix a metrically broken line with a minimal edit while preserving meaning.", "prerequisites": ["n-scansion-misra"], "taughtIn": "ls-5-2" },
+    { "id": "n-semantic-trade", "name": "Semantic trades", "description": "Judge whether a metrical fix preserves or improves the meaning and register of a line.", "prerequisites": ["n-matra-edit"], "taughtIn": "ls-5-2" },
+    { "id": "n-radeef-qafiya", "name": "Radeef & qaafiya", "description": "Identify radeef and qaafiya in a ghazal and judge qaafiya soundness.", "prerequisites": ["n-matra-counting"], "taughtIn": "ls-6-1" },
+    { "id": "n-misra-composition", "name": "Misra composition", "description": "Compose an original misra in a given behr.", "prerequisites": ["n-matra-edit", "n-radeef-qafiya"], "taughtIn": "ls-6-2" }
+  ],
+  "drillTypes": [
+    {
+      "id": "dt-behr-rep",
+      "name": "Behr rep",
+      "format": "Type the arkaan digit pattern of the named behr from memory (e.g. '122 122 122 122').",
+      "inputShape": "pattern",
+      "evaluationMode": "deterministic",
+      "checkerId": "ck-seq"
+    },
+    {
+      "id": "dt-syllable-weight",
+      "name": "Syllable weighting",
+      "format": "Given a word, type its per-syllable weight pattern (e.g. muhabbat → '1 2 2').",
+      "inputShape": "pattern",
+      "evaluationMode": "deterministic",
+      "checkerId": "ck-seq"
+    },
+    {
+      "id": "dt-matra-total",
+      "name": "Matra total",
+      "format": "Given a word or phrase, type the total matra count as a number.",
+      "inputShape": "number",
+      "evaluationMode": "deterministic",
+      "checkerId": "ck-num"
+    },
+    {
+      "id": "dt-scan-misra",
+      "name": "Misra scansion",
+      "format": "Given a misra, type its full taqti as a digit pattern grouped by foot.",
+      "inputShape": "pattern",
+      "evaluationMode": "deterministic",
+      "checkerId": "ck-seq"
+    },
+    {
+      "id": "dt-trap-spot",
+      "name": "Trap spot",
+      "format": "Given a misra and its target behr, name the single word whose final vowel must flex short for the line to scan.",
+      "inputShape": "word",
+      "evaluationMode": "deterministic",
+      "checkerId": "ck-word"
+    },
+    {
+      "id": "dt-matra-edit",
+      "name": "Matra edit",
+      "format": "Given a metrically broken line and its target behr, produce a minimally edited line that scans, keeping the meaning.",
+      "inputShape": "text",
+      "evaluationMode": "hybrid",
+      "checkerId": "ck-scan-engine",
+      "hybrid": {
+        "deterministicAxis": "scansion — does the edited line fit the target pattern",
+        "judgmentAxis": "semantic trade — is meaning and register preserved or improved"
+      }
+    },
+    {
+      "id": "dt-qafiya-pick",
+      "name": "Qaafiya pick",
+      "format": "Given a matla, type the qaafiya (the rhyming element, excluding radeef).",
+      "inputShape": "word",
+      "evaluationMode": "deterministic",
+      "checkerId": "ck-word"
+    },
+    {
+      "id": "dt-compose-misra",
+      "name": "Compose misra",
+      "format": "Compose an original misra in the given behr on the given theme. Produces an artifact with a revision chain.",
+      "inputShape": "text",
+      "evaluationMode": "judgment",
+      "checkerId": "ck-judge",
+      "producesArtifact": true
+    }
+  ],
+  "standingElements": [
+    {
+      "id": "se-behr-rep",
+      "title": "Behr rep",
+      "minutes": 5,
+      "description": "Recite and type the arkaan pattern of a learned behr from memory. Opens every session once behrs have been taught.",
+      "drillTypeId": "dt-behr-rep",
+      "skillNodeIds": ["n-arkaan", "n-behr-mutaqarib", "n-behr-hazaj"]
+    }
+  ],
+  "errorCategories": [
+    {
+      "id": "ec-qi-baaqi",
+      "name": "The qi/baaqi trap",
+      "rootCause": "Assuming a word-final long vowel is always long (2). Final ī/ā/ū/e/o can flex short (1) when the meter demands it; the student scans 'baaqī' as 2-2 where the behr needs 2-1.",
+      "skillNodeIds": ["n-flexible-vowels", "n-scansion-misra"],
+      "instances": [
+        {
+          "date": "2026-07-02",
+          "material": "hazaar ḳhvaahisheñ aisī ki har ḳhvaahish pe dam nikle — scanning 'aisī'",
+          "userDid": "scanned aisī as 2-2, making the foot overweight",
+          "correct": "aisī flexes to 2-1 here; the final ī yields to the meter"
+        }
+      ]
+    },
+    {
+      "id": "ec-long-split",
+      "name": "Splitting long syllables",
+      "rootCause": "Breaking one long syllable into two shorts, usually on consonant clusters — reading 'dost' as do-sa-t (1-1-1) instead of dos-t (2-1).",
+      "skillNodeIds": ["n-syllable-weights", "n-matra-counting"],
+      "instances": [
+        {
+          "date": "2026-07-05",
+          "material": "word: dost",
+          "userDid": "counted 1-1-1",
+          "correct": "dos-t = 2-1 — the cluster closes the first syllable and makes it long"
+        }
+      ]
+    },
+    {
+      "id": "ec-izafat-heavy",
+      "name": "Heavy izafat",
+      "rootCause": "Scanning izafat -e- as long (2) by default. It is short (1) unless the meter forces otherwise.",
+      "skillNodeIds": ["n-izafat"],
+      "instances": []
+    }
+  ],
+  "calibrationExamples": [
+    {
+      "drillTypeId": "dt-scan-misra",
+      "prompt": "Scan: sitaaroñ se aage jahaañ aur bhī haiñ (behr-e-mutaqarib)",
+      "response": "122 122 122 122",
+      "evaluation": "correct",
+      "commentary": "Clean taqti. Note 'bhī' kept its length because the pattern position allowed it — the student did not over-apply the flexing rule. This is the level of precision expected for a 'correct'."
+    },
+    {
+      "drillTypeId": "dt-matra-edit",
+      "prompt": "Broken line: 'dil mera phir se udaas hai aaj shaam' — target behr-e-khafif. Fix minimally.",
+      "response": "dil mirā phir udaas hai is shaam",
+      "evaluation": "scansion correct, trade accepted",
+      "commentary": "Dropping 'se' and trading 'aaj' for 'is' keeps the plain-spoken register. A fix that swapped in a Persianate word (e.g. 'malool') would scan but lose the register — mark that kind of fix 'scans but trade rejected'."
+    },
+    {
+      "drillTypeId": "dt-compose-misra",
+      "prompt": "Compose in behr-e-mutaqarib, theme: safar.",
+      "response": "chalā jā rahā huuñ kisī kī talaash meñ",
+      "evaluation": "incorrect",
+      "commentary": "One foot overweight — 'talaash meñ' overshoots the final fa'oolun. Judge composition first on scansion, then on freshness of image. Do not accept a broken line however fresh the image."
+    }
+  ],
+  "itemBank": [
+    { "id": "it-rep-mutaqarib", "drillTypeId": "dt-behr-rep", "skillNodeIds": ["n-arkaan", "n-behr-mutaqarib"], "prompt": "Type the pattern of behr-e-mutaqarib musamman saalim.", "answer": "122 122 122 122" },
+    { "id": "it-rep-hazaj", "drillTypeId": "dt-behr-rep", "skillNodeIds": ["n-arkaan", "n-behr-hazaj"], "prompt": "Type the pattern of behr-e-hazaj musamman saalim.", "answer": "1222 1222 1222 1222" },
+    { "id": "it-syl-muhabbat", "drillTypeId": "dt-syllable-weight", "skillNodeIds": ["n-syllable-weights"], "prompt": "Weight the syllables: muhabbat", "answer": "1 2 2" },
+    { "id": "it-syl-tamanna", "drillTypeId": "dt-syllable-weight", "skillNodeIds": ["n-syllable-weights"], "prompt": "Weight the syllables: tamannā", "answer": "1 2 2" },
+    { "id": "it-syl-dost", "drillTypeId": "dt-syllable-weight", "skillNodeIds": ["n-syllable-weights"], "prompt": "Weight the syllables: dost", "answer": "2 1" },
+    { "id": "it-syl-jahaan", "drillTypeId": "dt-syllable-weight", "skillNodeIds": ["n-syllable-weights"], "prompt": "Weight the syllables: jahāñ", "answer": "1 2" },
+    { "id": "it-mat-muhabbat", "drillTypeId": "dt-matra-total", "skillNodeIds": ["n-matra-counting"], "prompt": "Total matras: muhabbat", "answer": "5" },
+    { "id": "it-mat-dil", "drillTypeId": "dt-matra-total", "skillNodeIds": ["n-matra-counting"], "prompt": "Total matras: dil", "answer": "2" },
+    { "id": "it-mat-samundar", "drillTypeId": "dt-matra-total", "skillNodeIds": ["n-matra-counting"], "prompt": "Total matras: samundar", "answer": "5" },
+    { "id": "it-mat-izafat-dard", "drillTypeId": "dt-matra-total", "skillNodeIds": ["n-izafat"], "prompt": "Total matras: dard-e-dil (izafat short)", "answer": "5" },
+    { "id": "it-mat-izafat-rang", "drillTypeId": "dt-matra-total", "skillNodeIds": ["n-izafat"], "prompt": "Total matras: rang-e-mehfil (izafat short)", "answer": "7" },
+    { "id": "it-scan-sitaron", "drillTypeId": "dt-scan-misra", "skillNodeIds": ["n-behr-mutaqarib"], "prompt": "Scan (behr-e-mutaqarib): sitaaroñ se aage jahaañ aur bhī haiñ", "answer": "122 122 122 122" },
+    { "id": "it-scan-muhabbat", "drillTypeId": "dt-scan-misra", "skillNodeIds": ["n-behr-hazaj"], "prompt": "Scan (behr-e-hazaj): muhabbat meñ nahīñ hai farq jiine aur marne kā", "answer": "1222 1222 1222 1222" },
+    { "id": "it-scan-full-1", "drillTypeId": "dt-scan-misra", "skillNodeIds": ["n-scansion-misra"], "prompt": "Scan without being told the behr, then group by foot: sitaaroñ se aage jahaañ aur bhī haiñ", "answer": "122 122 122 122" },
+    { "id": "it-scan-full-2", "drillTypeId": "dt-scan-misra", "skillNodeIds": ["n-scansion-misra"], "prompt": "Scan without being told the behr, then group by foot: muhabbat meñ nahīñ hai farq jiine aur marne kā", "answer": "1222 1222 1222 1222" },
+    { "id": "it-trap-aisi", "drillTypeId": "dt-trap-spot", "skillNodeIds": ["n-flexible-vowels"], "prompt": "Which word must flex its final vowel short? — hazaar ḳhvaahisheñ aisī ki har ḳhvaahish pe dam nikle", "answer": "aisī", "acceptedAnswers": ["aisi"] },
+    { "id": "it-trap-baaqi", "drillTypeId": "dt-trap-spot", "skillNodeIds": ["n-flexible-vowels"], "prompt": "Which word must flex its final vowel short? — baaqī rahegī der talak yeh kahānī bhī", "answer": "baaqī", "acceptedAnswers": ["baaqi"] },
+    { "id": "it-edit-udaas", "drillTypeId": "dt-matra-edit", "skillNodeIds": ["n-matra-edit", "n-semantic-trade"], "prompt": "Fix minimally for behr-e-khafif (2122 1212 22): dil mera phir se udaas hai aaj shaam", "answer": "2122 1212 22", "answerNote": "The answer is the target pattern the edited line must scan to; the semantic trade goes to judgment." },
+    { "id": "it-qaf-matla", "drillTypeId": "dt-qafiya-pick", "skillNodeIds": ["n-radeef-qafiya"], "prompt": "Matla: 'koī ummīd bar nahīñ aatī / koī sūrat nazar nahīñ aatī' — radeef is 'nahīñ aatī'. Type the qaafiya sound.", "answer": "ar", "acceptedAnswers": ["-ar", "bar/nazar"] },
+    { "id": "it-compose-mutaqarib", "drillTypeId": "dt-compose-misra", "skillNodeIds": ["n-misra-composition"], "prompt": "Compose one misra in behr-e-mutaqarib (122 122 122 122), theme: safar.", "answer": "122 122 122 122", "answerNote": "Answer is the target pattern; the misra itself is judged." },
+    { "id": "it-compose-hazaj", "drillTypeId": "dt-compose-misra", "skillNodeIds": ["n-misra-composition"], "prompt": "Compose one misra in behr-e-hazaj (1222 ×4), theme: shaam.", "answer": "1222 1222 1222 1222", "answerNote": "Answer is the target pattern; the misra itself is judged." }
+  ],
+  "phases": [
+    {
+      "id": "ph-1",
+      "title": "Phase 1 — Awaaz aur Vazn",
+      "weeks": [
+        {
+          "id": "wk-1",
+          "title": "Week 1 — Syllables and matras",
+          "lessons": [
+            {
+              "id": "ls-1-0",
+              "title": "How this practice works",
+              "lessonType": "study",
+              "objective": "Understand why meter is learned through the ear and the pen together, and how these sessions will run.",
+              "masteryCriteria": "Can state, unprompted, what taqti is and why drills stay short.",
+              "estimatedMinutes": 10,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Shayari begins in the ear. Before a single technical term, know this: every misra you have ever loved holds its shape because its syllables carry weights, and those weights fall into a repeating pattern. The pattern is the behr. The act of finding it in a line is taqti.\n\nThese sessions are short on lecture and long on reps. You will scan, weigh, count, and — later — repair and compose. The tutor is strict about weights and warm about meaning; expect both."
+                },
+                {
+                  "type": "prose",
+                  "body": "Two habits from day one:\n\n1. **Say the line aloud** before you analyse it. The mouth finds weights the eye misses.\n2. **Never argue with the meter.** When a beautiful word will not fit, the word changes, not the pattern. Learning to make that trade well is where this whole practice is headed."
+                },
+                {
+                  "type": "generate",
+                  "body": "Give the student a two-minute listening exercise: pick one famous sher (not from the plan's own examples), show it in Roman Urdu, and ask them to read it aloud three times listening only for the rhythm — no analysis. Then tell them, in one sentence, what they were hearing."
+                },
+                {
+                  "type": "reflect",
+                  "body": "Which sher or line first made you want to learn this craft? Write it down — it becomes part of your record."
+                }
+              ]
+            },
+            {
+              "id": "ls-1-1",
+              "title": "Short and long",
+              "lessonType": "mixed",
+              "objective": "Weight any Urdu word's syllables correctly at sight.",
+              "masteryCriteria": "10 consecutive words weighted correctly across two sessions.",
+              "skillNodeIds": ["n-syllable-weights"],
+              "drillTypeIds": ["dt-syllable-weight"],
+              "estimatedMinutes": 20,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Every syllable is **short (1)** or **long (2)**. That is the entire alphabet of meter.\n\nShort: an open syllable with a short vowel — *di* in *dil-e-nadaañ*, *mu* in *muhabbat*.\nLong: a syllable with a long vowel (*aa, ii, uu, e, o*) — or a short vowel **closed by a consonant**: *dil* alone is long, because the *l* closes it.\n\nThe second rule is the one that trips everyone: length comes from closure, not just vowel quality."
+                },
+                {
+                  "type": "example",
+                  "body": "muhabbat → mu · hab · bat → 1 2 2",
+                  "commentary": "mu is open with a short vowel: 1. hab and bat are short vowels closed by consonants: 2 each. Say it aloud — the stresses land exactly on the 2s."
+                },
+                {
+                  "type": "example",
+                  "body": "محبت — the same word in script",
+                  "commentary": "Script hides the weights; the ear finds them. Never weight from spelling alone.",
+                  "direction": "rtl",
+                  "lang": "ur"
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-syllable-weight",
+                  "count": 2
+                },
+                {
+                  "type": "generate",
+                  "body": "Produce five fresh everyday Urdu words (not muhabbat, tamannā, dost, or jahāñ) of mixed difficulty, and ask the student to weight them aloud before revealing the answers one by one."
+                },
+                {
+                  "type": "reflect",
+                  "body": "Which kind of syllable are you hesitating on — open ones, or closed ones? Name the pattern in your own words."
+                }
+              ]
+            },
+            {
+              "id": "ls-1-2",
+              "title": "Counting matras",
+              "lessonType": "drill",
+              "objective": "Total matra counts for words and short phrases without hesitation.",
+              "masteryCriteria": "90% accuracy over 20 items with no long-split errors.",
+              "skillNodeIds": ["n-matra-counting", "n-syllable-weights"],
+              "drillTypeIds": ["dt-matra-total", "dt-syllable-weight"],
+              "estimatedMinutes": 15,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "A matra total is just the sum of the weights: *muhabbat* = 1+2+2 = **5**.\n\nThe classic mistake is splitting a long syllable into two shorts on consonant clusters — reading *dost* as do·sa·t. There is no *a* in there. The cluster closes the first syllable: *dos·t* = 2+1 = 3. When a total comes out one high, look for a split first."
+                },
+                {
+                  "type": "example",
+                  "body": "samundar → sa · mun · dar → 1+2+2 = 5",
+                  "commentary": "Same shape as muhabbat. Families of shapes repeat constantly — collect them."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-matra-total",
+                  "count": 2
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-syllable-weight",
+                  "count": 1
+                },
+                {
+                  "type": "generate",
+                  "body": "Give three short two-word phrases (fresh, not from the item bank) and ask for their matra totals, then walk through any the student missed, syllable by syllable."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wk-2",
+          "title": "Week 2 — The flexing rules",
+          "lessons": [
+            {
+              "id": "ls-2-1",
+              "title": "Flexible final vowels",
+              "lessonType": "mixed",
+              "objective": "Spot which word in a line must flex its final vowel, before scanning.",
+              "masteryCriteria": "8 of 10 trap-spot items correct; zero qi/baaqi instances in a full session.",
+              "skillNodeIds": ["n-flexible-vowels"],
+              "drillTypeIds": ["dt-trap-spot"],
+              "estimatedMinutes": 20,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Here is the rule that separates readers from scanners: **a word-final long vowel (ī, ā, ū, e, o) may count as short when the meter asks for it.**\n\nThe poet does not announce this. The line simply will not scan until you let the final vowel of some word yield. *baaqī* is written long-long, but in many lines it must be read 2-1 — *baa·qi* — or the foot breaks.\n\nThis is the single most common scansion error in your record. The fix is a habit: before scanning any line, ask *which final vowels here might flex?*"
+                },
+                {
+                  "type": "example",
+                  "body": "hazaar ḳhvaahisheñ aisī ki har ḳhvaahish pe dam nikle",
+                  "commentary": "Written weight of aisī: 2-2. The behr demands 2-1 at that position — the final ī flexes. Nothing else in the line moves."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-trap-spot",
+                  "count": 2
+                },
+                {
+                  "type": "generate",
+                  "body": "Write two fresh lines (your own, plain diction) in any common behr, each containing exactly one word whose final long vowel must flex. Ask the student to find it in each. Do not reuse baaqī or aisī."
+                },
+                {
+                  "type": "reflect",
+                  "body": "In your own words: how will you notice a flexing candidate before it bites you?"
+                }
+              ]
+            },
+            {
+              "id": "ls-2-2",
+              "title": "Izafat",
+              "lessonType": "drill",
+              "objective": "Scan izafat as short by default and recognise the forced-long case.",
+              "masteryCriteria": "No heavy-izafat errors across two sessions.",
+              "skillNodeIds": ["n-izafat"],
+              "drillTypeIds": ["dt-matra-total"],
+              "estimatedMinutes": 15,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Izafat — the *-e-* that links *dard-e-dil* — is a syllable, and it weighs **1 by default**. Beginners write it long because it is drawn out in recitation; recitation stretches, meter does not.\n\nRarely, the meter forces izafat long. Treat that as the exception you discover from the pattern, never the assumption you start with."
+                },
+                {
+                  "type": "example",
+                  "body": "dard-e-dil → dar · d-e · dil → 2+1+2 = 5",
+                  "commentary": "The izafat rides on the d as a light syllable. If you counted 6, you weighed the izafat heavy — that is the ec-izafat-heavy error in your ledger."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-matra-total",
+                  "count": 2
+                },
+                {
+                  "type": "generate",
+                  "body": "Give three fresh izafat constructions of increasing length and ask for matra totals. At least one should tempt the student into weighing the izafat heavy."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ph-2",
+      "title": "Phase 2 — Behr",
+      "weeks": [
+        {
+          "id": "wk-3",
+          "title": "Week 3 — Mutaqarib",
+          "lessons": [
+            {
+              "id": "ls-3-1",
+              "title": "Arkaan and mutaqarib",
+              "lessonType": "mixed",
+              "objective": "Recite the arkaan and scan mutaqarib lines fluently.",
+              "masteryCriteria": "Behr rep perfect from memory; 4 of 5 lines scanned clean.",
+              "skillNodeIds": ["n-arkaan", "n-behr-mutaqarib"],
+              "drillTypeIds": ["dt-behr-rep", "dt-scan-misra"],
+              "estimatedMinutes": 25,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Meters are built from **arkaan** — named feet, each a fixed weight pattern:\n\n- fa'oolun → 1 2 2\n- mafaa'eelun → 1 2 2 2\n- faa'ilaatun → 2 1 2 2\n- mafaa'ilun → 1 2 1 2\n\nThe names are mnemonic words whose own syllables carry the pattern — say *fa'oolun* aloud and you have said 122. This is why reciting arkaan works: the name is the drill.\n\nFirst behr: **mutaqarib** — fa'oolun four times. 122 122 122 122. It rocks like a walking gait; you already know it from more shers than you realise."
+                },
+                {
+                  "type": "example",
+                  "body": "sitaaroñ se aage jahaañ aur bhī haiñ → si·taa·roñ | se·aa·ge | ja·haañ·aur | bhī·haiñ → 122 122 122 122",
+                  "commentary": "Foot boundaries ignore word boundaries — 'jahaañ aur' straddles a foot. That independence of feet from words is the thing to internalise this week."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-behr-rep",
+                  "itemIds": ["it-rep-mutaqarib"]
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-scan-misra",
+                  "itemIds": ["it-scan-sitaron"]
+                },
+                {
+                  "type": "generate",
+                  "body": "Quote one more public-domain mutaqarib misra (not the sitaaroñ line), show it unscanned, and ask the student to scan it. Then confirm foot by foot."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wk-4",
+          "title": "Week 4 — Hazaj",
+          "lessons": [
+            {
+              "id": "ls-4-1",
+              "title": "Hazaj",
+              "lessonType": "mixed",
+              "objective": "Scan hazaj lines and distinguish hazaj from mutaqarib by ear.",
+              "masteryCriteria": "4 of 5 hazaj lines scanned clean; correct behr named on first hearing.",
+              "skillNodeIds": ["n-behr-hazaj"],
+              "drillTypeIds": ["dt-behr-rep", "dt-scan-misra"],
+              "estimatedMinutes": 25,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Second behr: **hazaj** — mafaa'eelun four times. 1222 1222 1222 1222.\n\nAgainst mutaqarib's walking gait, hazaj surges: one light step, then three heavy. Ghalib leans on it for his grandest declarations.\n\nEar test between the two: count the longs after each short. One-two? Mutaqarib. One-two-three? Hazaj."
+                },
+                {
+                  "type": "example",
+                  "body": "muhabbat meñ nahīñ hai farq jiine aur marne kā → 1222 1222 1222 1222",
+                  "commentary": "Notice muhabbat's own 1-2-2 dissolves into the foot pattern — the word's weights serve the behr, not themselves."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-behr-rep",
+                  "itemIds": ["it-rep-hazaj"]
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-scan-misra",
+                  "itemIds": ["it-scan-muhabbat"]
+                },
+                {
+                  "type": "generate",
+                  "body": "Recite (in text) two fresh public-domain misras, one mutaqarib and one hazaj, in random order, and ask the student to name the behr of each by ear before any scanning."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wk-5",
+          "title": "Week 5 — Repair",
+          "lessons": [
+            {
+              "id": "ls-5-1",
+              "title": "Full-misra scansion",
+              "lessonType": "drill",
+              "objective": "Scan unseen misras applying all flexing rules.",
+              "masteryCriteria": "80% clean taqti on unseen lines.",
+              "skillNodeIds": ["n-scansion-misra", "n-flexible-vowels"],
+              "drillTypeIds": ["dt-scan-misra", "dt-trap-spot"],
+              "estimatedMinutes": 25,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Everything so far converges here. The full scansion method, in order:\n\n1. Read the line aloud twice.\n2. Guess the behr from the gait before any analysis.\n3. Mark flexing candidates — final long vowels, izafats.\n4. Weight syllable by syllable, letting candidates yield where the pattern demands.\n5. Group into feet and check the total.\n\nStep 2 matters more than it looks: scanning against a hypothesis is fast; scanning into a void is guesswork."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-scan-misra",
+                  "itemIds": ["it-scan-full-1", "it-scan-full-2"]
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-trap-spot",
+                  "count": 1
+                },
+                {
+                  "type": "generate",
+                  "body": "Give one unseen public-domain misra in mutaqarib or hazaj containing at least one flexing candidate. Ask for the full five-step scansion, and grade each step, not just the final pattern."
+                },
+                {
+                  "type": "reflect",
+                  "body": "Which of the five steps do you skip when rushing — and what has it cost you so far?"
+                }
+              ]
+            },
+            {
+              "id": "ls-5-2",
+              "title": "Matra edits",
+              "lessonType": "production",
+              "objective": "Repair broken lines minimally, and defend the semantic trade.",
+              "masteryCriteria": "3 consecutive edits that scan AND have their trades accepted.",
+              "skillNodeIds": ["n-matra-edit", "n-semantic-trade"],
+              "drillTypeIds": ["dt-matra-edit"],
+              "estimatedMinutes": 25,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "A broken line is a negotiation: the meter states its terms, and you decide what the meaning can afford to give up.\n\nThe doctrine is **minimal edit**: change the fewest syllables that make the line scan, and account for every change. Swapping in a fancier synonym that scans is not a repair if it changes the register — a plain-spoken line patched with Persianate brocade is a worse line that happens to scan.\n\nEach repair here is graded twice: the scansion by machine, the trade by the tutor. Both must pass."
+                },
+                {
+                  "type": "example",
+                  "body": "Broken: 'dil mera phir se udaas hai aaj shaam' → Fixed: 'dil mirā phir udaas hai is shaam'",
+                  "commentary": "Two small trades: drop the redundant 'se', trade 'aaj' for 'is'. Meaning intact, register intact, meter restored. That is the standard."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-matra-edit",
+                  "itemIds": ["it-edit-udaas"]
+                },
+                {
+                  "type": "generate",
+                  "body": "Compose a fresh, deliberately broken line (one foot overweight or underweight) in mutaqarib or hazaj, in plain register. Give the student the target pattern and ask for a minimal repair with a one-line defence of each trade."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ph-3",
+      "title": "Phase 3 — Ghazal ki Bunyaad",
+      "weeks": [
+        {
+          "id": "wk-6",
+          "title": "Week 6 — Radeef, qaafiya, composition",
+          "lessons": [
+            {
+              "id": "ls-6-1",
+              "title": "Radeef and qaafiya",
+              "lessonType": "mixed",
+              "objective": "Identify radeef and qaafiya instantly and judge qaafiya soundness.",
+              "masteryCriteria": "10 of 10 matlas parsed correctly.",
+              "skillNodeIds": ["n-radeef-qafiya"],
+              "drillTypeIds": ["dt-qafiya-pick"],
+              "estimatedMinutes": 20,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "A ghazal's spine is two devices at line-end:\n\n**Radeef** — the phrase repeated verbatim at the end of both misras of the matla, and the second misra of every sher after.\n**Qaafiya** — the rhyming element immediately *before* the radeef. It changes word to word but keeps the rhyme sound.\n\nParse order: find the verbatim repetition first (radeef), then look one step left for the rhyme (qaafiya). Doing it in the other order is how people misparse matlas."
+                },
+                {
+                  "type": "example",
+                  "body": "koī ummīd bar nahīñ aatī / koī sūrat nazar nahīñ aatī",
+                  "commentary": "Radeef: 'nahīñ aatī' — verbatim both lines. Qaafiya: bar / nazar — the '-ar' sound. Everything before that is free."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-qafiya-pick",
+                  "itemIds": ["it-qaf-matla"]
+                },
+                {
+                  "type": "generate",
+                  "body": "Show one public-domain matla the student has not seen, and ask them to name radeef and qaafiya in parse order. Then ask: which qaafiya words would be UNSOUND continuations, and why?"
+                }
+              ]
+            },
+            {
+              "id": "ls-6-2",
+              "title": "First misras",
+              "lessonType": "production",
+              "objective": "Compose original misras that scan on the first or second revision.",
+              "masteryCriteria": "3 artifacts whose final revision scans clean and is judged fresh.",
+              "skillNodeIds": ["n-misra-composition"],
+              "drillTypeIds": ["dt-compose-misra"],
+              "blockedOn": "md-voice-models",
+              "estimatedMinutes": 30,
+              "content": [
+                {
+                  "type": "prose",
+                  "body": "Composition inverts everything so far: instead of finding the pattern in a line, you pour a line into a pattern you already hold.\n\nWorking method: walk with the behr until it hums on its own — *fa'oolun fa'oolun fa'oolun fa'oolun* — then let words fall into the gait. Draft fast, scan hard, revise honestly. The revision chain is the work; a first draft that happens to scan teaches less than a broken draft repaired well."
+                },
+                {
+                  "type": "drill",
+                  "drillTypeId": "dt-compose-misra",
+                  "itemIds": ["it-compose-mutaqarib"]
+                },
+                {
+                  "type": "generate",
+                  "body": "Referencing the student's three model poets (from the resolved plan data), name one concrete habit of each poet's line-making worth stealing this week — one sentence per poet — then set a composition theme for the next artifact."
+                },
+                {
+                  "type": "reflect",
+                  "body": "Read your last artifact's revision chain aloud. Which single revision taught you the most, and what exactly did it teach?"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

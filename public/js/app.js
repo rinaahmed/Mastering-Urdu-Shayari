@@ -1,10 +1,11 @@
-// App bootstrap: seed plan #1 on first run, install the offline-queue
-// flusher, register the service worker, and route between views.
-// Today is the default — one screen, today's session only.
+// App bootstrap: seed plan on first run, E Ink mode detection, offline-queue
+// flusher, service worker, hash routing. Today is the default — one screen,
+// today's session only.
 
+import { db } from './db.js';
 import { seedDefaultPlan } from './exporter.js';
 import { installQueueFlusher } from './api.js';
-import { applyEvaluation } from './session.js';
+import { applyEvaluation, getActivePlan } from './session.js';
 import { renderToday } from './views/today.js';
 import { renderProgress } from './views/progress.js';
 import { renderPortfolio } from './views/portfolio.js';
@@ -21,7 +22,7 @@ const main = document.getElementById('main');
 
 function route() {
   const hash = routes[location.hash] ? location.hash : '#today';
-  document.querySelectorAll('nav a').forEach(a => {
+  document.querySelectorAll('nav a').forEach((a) => {
     a.classList.toggle('active', a.getAttribute('href') === hash);
   });
   routes[hash](main);
@@ -29,17 +30,32 @@ function route() {
 
 function updateOnlineBadge() {
   const badge = document.getElementById('offline-badge');
-  badge.hidden = navigator.onLine;
+  if (badge) badge.hidden = navigator.onLine;
+}
+
+async function applyEinkMode() {
+  const stored = await db.getMeta('einkMode', null);
+  // Default on when the display reports slow refresh (E Ink panels).
+  const eink = stored !== null ? stored : window.matchMedia('(update: slow)').matches;
+  document.body.classList.toggle('eink', !!eink);
+}
+
+async function setTitle() {
+  const plan = await getActivePlan();
+  const h1 = document.getElementById('app-title');
+  if (plan && h1) h1.textContent = plan.title;
 }
 
 async function boot() {
+  await applyEinkMode();
   await seedDefaultPlan();
+  await setTitle();
 
-  // When a queued judgment call finally succeeds, apply it to its session block.
+  // When a queued judgment call finally succeeds, apply it to its screen.
   installQueueFlusher(async (queueItem, result) => {
-    const { sessionId, blockIndex, ledgerAlreadyApplied } = queueItem.context || {};
-    if (sessionId !== undefined && blockIndex !== undefined) {
-      await applyEvaluation(sessionId, blockIndex, result, ledgerAlreadyApplied);
+    const { sessionId, screenIndex, ledgerAlreadyApplied } = queueItem.context || {};
+    if (sessionId !== undefined && screenIndex !== undefined) {
+      await applyEvaluation(sessionId, screenIndex, result, ledgerAlreadyApplied);
       if (location.hash === '#today' || location.hash === '') route();
     }
   });
@@ -51,7 +67,7 @@ async function boot() {
   route();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed:', err));
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('SW registration failed:', err));
   }
 }
 

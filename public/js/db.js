@@ -1,16 +1,17 @@
 // IndexedDB storage layer. All app state lives here; the API is stateless.
 
-const DB_NAME = 'mus-db';
+const DB_NAME = 'ls-db';   // v2 rewrite — fresh database
 const DB_VERSION = 1;
 
 export const STORES = {
-  plans: 'plans',                 // key: id — imported plan files, verbatim
-  nodes: 'nodes',                 // key: id — skill node ledger state
+  plans: 'plans',                     // key: id — imported plan files, verbatim
+  nodes: 'nodes',                     // key: id — skill node ledger state
   errorCategories: 'errorCategories', // key: id
-  artifacts: 'artifacts',         // key: id
-  sessions: 'sessions',           // key: id
-  queue: 'queue',                 // autoIncrement — pending API calls while offline
-  meta: 'meta'                    // key: key — activePlanId, currentLessonId, ...
+  artifacts: 'artifacts',             // key: id
+  sessions: 'sessions',               // key: id
+  lessonState: 'lessonState',         // key: id (lesson id) — completion gates
+  queue: 'queue',                     // autoIncrement — pending API calls while offline
+  meta: 'meta'                        // key: key — activePlanId, currentLessonId, einkMode, resolved missingData
 };
 
 let dbPromise = null;
@@ -21,29 +22,20 @@ function openDb() {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORES.plans)) db.createObjectStore(STORES.plans, { keyPath: 'id' });
-      if (!db.objectStoreNames.contains(STORES.nodes)) {
-        const s = db.createObjectStore(STORES.nodes, { keyPath: 'id' });
-        s.createIndex('planId', 'planId');
-      }
-      if (!db.objectStoreNames.contains(STORES.errorCategories)) {
-        const s = db.createObjectStore(STORES.errorCategories, { keyPath: 'id' });
-        s.createIndex('planId', 'planId');
-      }
-      if (!db.objectStoreNames.contains(STORES.artifacts)) {
-        const s = db.createObjectStore(STORES.artifacts, { keyPath: 'id' });
-        s.createIndex('planId', 'planId');
-        s.createIndex('lessonId', 'lessonId');
-        s.createIndex('date', 'date');
-      }
-      if (!db.objectStoreNames.contains(STORES.sessions)) {
-        const s = db.createObjectStore(STORES.sessions, { keyPath: 'id' });
-        s.createIndex('planId', 'planId');
-        s.createIndex('date', 'date');
-        s.createIndex('status', 'status');
-      }
-      if (!db.objectStoreNames.contains(STORES.queue)) db.createObjectStore(STORES.queue, { keyPath: 'id', autoIncrement: true });
-      if (!db.objectStoreNames.contains(STORES.meta)) db.createObjectStore(STORES.meta, { keyPath: 'key' });
+      const mk = (name, opts, indexes = []) => {
+        if (!db.objectStoreNames.contains(name)) {
+          const s = db.createObjectStore(name, opts);
+          indexes.forEach((ix) => s.createIndex(ix, ix));
+        }
+      };
+      mk(STORES.plans, { keyPath: 'id' });
+      mk(STORES.nodes, { keyPath: 'id' }, ['planId']);
+      mk(STORES.errorCategories, { keyPath: 'id' }, ['planId']);
+      mk(STORES.artifacts, { keyPath: 'id' }, ['planId', 'lessonId', 'date']);
+      mk(STORES.sessions, { keyPath: 'id' }, ['planId', 'date', 'status']);
+      mk(STORES.lessonState, { keyPath: 'id' }, ['planId']);
+      mk(STORES.queue, { keyPath: 'id', autoIncrement: true });
+      mk(STORES.meta, { keyPath: 'key' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -51,22 +43,21 @@ function openDb() {
   return dbPromise;
 }
 
-function tx(storeName, mode, fn) {
-  return openDb().then((db) => new Promise((resolve, reject) => {
-    const t = db.transaction(storeName, mode);
-    const store = t.objectStore(storeName);
-    const result = fn(store);
-    t.oncomplete = () => resolve(result && result._req ? result._req.result : result);
-    t.onerror = () => reject(t.error);
-    t.onabort = () => reject(t.error);
-  }));
-}
-
 function reqToPromise(req) {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
+
+function tx(storeName, mode, fn) {
+  return openDb().then((db) => new Promise((resolve, reject) => {
+    const t = db.transaction(storeName, mode);
+    fn(t.objectStore(storeName));
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error);
+  }));
 }
 
 export const db = {
@@ -82,26 +73,26 @@ export const db = {
     const d = await openDb();
     return reqToPromise(d.transaction(store).objectStore(store).index(index).getAll(value));
   },
-  put(store, value) {
-    return tx(store, 'readwrite', (s) => { s.put(value); return value; });
+  async put(store, value) {
+    await tx(store, 'readwrite', (s) => s.put(value));
+    return value;
   },
-  putAll(store, values) {
-    return tx(store, 'readwrite', (s) => { values.forEach((v) => s.put(v)); return values; });
+  async putAll(store, values) {
+    await tx(store, 'readwrite', (s) => values.forEach((v) => s.put(v)));
+    return values;
   },
-  delete(store, key) {
-    return tx(store, 'readwrite', (s) => { s.delete(key); });
+  async delete(store, key) {
+    await tx(store, 'readwrite', (s) => s.delete(key));
   },
-  clear(store) {
-    return tx(store, 'readwrite', (s) => { s.clear(); });
+  async clear(store) {
+    await tx(store, 'readwrite', (s) => s.clear());
   },
   async add(store, value) {
     const d = await openDb();
     const t = d.transaction(store, 'readwrite');
-    const req = t.objectStore(store).add(value);
-    return reqToPromise(req);
+    return reqToPromise(t.objectStore(store).add(value));
   },
 
-  // meta helpers
   async getMeta(key, fallback = null) {
     const row = await this.get(STORES.meta, key);
     return row ? row.value : fallback;
@@ -117,7 +108,7 @@ export function uid(prefix = 'id') {
 
 // Full export of every store — the data belongs to the user.
 export async function exportAll() {
-  const out = { exportedAt: new Date().toISOString(), app: 'mastering-urdu-shayari', version: 1, stores: {} };
+  const out = { exportedAt: new Date().toISOString(), app: 'learning-sessions', version: 2, stores: {} };
   for (const name of Object.values(STORES)) {
     out.stores[name] = await db.getAll(name);
   }

@@ -62,12 +62,13 @@ export async function onRequestPost({ request, env }) {
     model: env.ANTHROPIC_MODEL || DEFAULT_MODEL,
     max_tokens: 1024,
     system:
-      'You are a strict grader for Urdu prosody drills. You receive a drill, the correct ' +
-      'answer, and the student response — nothing else, by design. Judge correctness. If ' +
-      'incorrect, match the error to one of the known categories by id; only propose a ' +
-      'newCategory when no known category fits. confidenceDelta: +0.1..+0.3 for correct ' +
-      '(higher for hard drills), -0.1..-0.3 for incorrect. Do not teach, hint, or explain ' +
-      'method — the note is one factual sentence.',
+      'You are a strict grader for practice drills. You receive a drill, the expected ' +
+      'answer, and the student response — nothing else, by design; the subject domain is ' +
+      'whatever the drill itself describes. Judge correctness. If incorrect, match the ' +
+      'error to one of the known categories by id; only propose a newCategory when no ' +
+      'known category fits. confidenceDelta: +0.1..+0.3 for correct (higher for hard ' +
+      'drills), -0.1..-0.3 for incorrect. Do not teach, hint, or explain method — the ' +
+      'note is one factual sentence.',
     messages: [
       {
         role: 'user',

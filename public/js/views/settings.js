@@ -1,10 +1,11 @@
-// Settings — plan import (with clear validation errors), full JSON export,
-// restore, offline-queue status, and derived-node creation.
+// Settings — plan import with full-path validation errors, v1 conversion,
+// display mode (E Ink), plan dependencies (missingData), export/restore,
+// offline queue status, derived nodes.
 
 import { db, STORES } from '../db.js';
-import { importPlan, downloadFullExport, restoreFromExport } from '../exporter.js';
+import { importPlan, convertV1, downloadFullExport, downloadJson, restoreFromExport } from '../exporter.js';
 import { queueSize } from '../api.js';
-import { getActivePlan, createDerivedNode } from '../session.js';
+import { getActivePlan, getResolvedMissingIds, resolveMissingData, createDerivedNode } from '../session.js';
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -13,100 +14,181 @@ const el = (tag, cls, text) => {
   return n;
 };
 
+function filePicker(accept, onText) {
+  const input = el('input');
+  input.type = 'file';
+  input.accept = accept;
+  input.style.display = 'none';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (file) await onText(await file.text());
+    input.value = '';
+  };
+  return input;
+}
+
 export async function renderSettings(root) {
   root.innerHTML = '';
   const plan = await getActivePlan();
 
-  // Active plan
+  // ---- Display mode ----
+  const displayCard = el('section', 'card');
+  displayCard.append(el('h2', null, 'Display'));
+  const einkRow = el('label', 'toggle-row');
+  const einkBox = el('input');
+  einkBox.type = 'checkbox';
+  einkBox.checked = document.body.classList.contains('eink');
+  einkBox.onchange = async () => {
+    document.body.classList.toggle('eink', einkBox.checked);
+    await db.setMeta('einkMode', einkBox.checked);
+  };
+  einkRow.append(einkBox, el('span', null, 'E Ink mode — pure greyscale, no accent, heavier borders'));
+  displayCard.append(einkRow);
+  displayCard.append(el('p', 'muted small', 'Defaults on when the display reports slow refresh (E Ink).'));
+  root.append(displayCard);
+
+  // ---- Plan ----
   const planCard = el('section', 'card');
   planCard.append(el('h2', null, 'Plan'));
   planCard.append(el('p', null, plan ? `Active: ${plan.title}` : 'No plan loaded.'));
 
-  const fileInput = el('input');
-  fileInput.type = 'file';
-  fileInput.accept = 'application/json';
-  fileInput.style.display = 'none';
-  const importBtn = el('button', 'primary', 'Import plan JSON…');
   const errBox = el('div', 'error-box');
-  importBtn.onclick = () => fileInput.click();
-  fileInput.onchange = async () => {
-    const file = fileInput.files[0];
-    if (!file) return;
-    const text = await file.text();
+  const showErrors = (title, errors) => {
+    errBox.innerHTML = '';
+    errBox.append(el('p', 'verdict bad small', title));
+    const ul = el('ul', 'error-list');
+    errors.forEach((e) => ul.append(el('li', null, e)));
+    errBox.append(ul);
+  };
+
+  const importInput = filePicker('application/json', async (text) => {
     const result = await importPlan(text);
     if (result.ok) {
       errBox.innerHTML = '';
-      errBox.append(el('p', 'verdict ok', `Imported: ${result.plan.title}`));
+      errBox.append(el('p', 'verdict ok small', `Imported: ${result.plan.title}`));
+      renderSettings(root);
     } else {
-      errBox.innerHTML = '';
-      errBox.append(el('p', 'verdict bad', `Plan failed validation (${result.errors.length} error${result.errors.length > 1 ? 's' : ''}):`));
-      const ul = el('ul', 'error-list');
-      result.errors.forEach(e => ul.append(el('li', null, e)));
-      errBox.append(ul);
+      showErrors(`Import refused (${result.errors.length} problem${result.errors.length > 1 ? 's' : ''}):`, result.errors);
     }
-    renderSettingsPartial(root);
-  };
-  planCard.append(importBtn, fileInput, errBox);
+  });
+  const importBtn = el('button', 'primary', 'Import plan JSON…');
+  importBtn.onclick = () => importInput.click();
+
+  const convertInput = filePicker('application/json', async (text) => {
+    const { plan: draft, issues } = convertV1(text);
+    errBox.innerHTML = '';
+    if (!draft) {
+      showErrors('Conversion failed:', issues.map((i) => `${i.path}: ${i.message}`));
+      return;
+    }
+    const errors = issues.filter((i) => i.level === 'error');
+    const todos = issues.filter((i) => i.level === 'todo');
+    errBox.append(el('p', 'verdict small', `Converted to schema v2 — ${errors.length} blocking, ${todos.length} to author by hand.`));
+    const ul = el('ul', 'error-list');
+    errors.forEach((i) => ul.append(el('li', 'hard', `MUST FIX — ${i.path}: ${i.message}`)));
+    todos.forEach((i) => ul.append(el('li', null, `TODO — ${i.path}: ${i.message}`)));
+    errBox.append(ul);
+    const dl = el('button', null, 'Download v2 draft…');
+    dl.onclick = () => downloadJson(draft, `${draft.id || 'plan'}-v2-draft.json`);
+    errBox.append(dl);
+    if (errors.length === 0) {
+      const imp = el('button', 'primary', 'Import draft now');
+      imp.onclick = async () => {
+        const result = await importPlan(draft);
+        if (result.ok) {
+          errBox.innerHTML = '';
+          errBox.append(el('p', 'verdict ok small', `Imported: ${result.plan.title}`));
+          renderSettings(root);
+        } else {
+          showErrors('Draft failed validation:', result.errors);
+        }
+      };
+      errBox.append(imp);
+    }
+  });
+  const convertBtn = el('button', null, 'Convert v1 plan…');
+  convertBtn.onclick = () => convertInput.click();
+
+  const btnRow = el('div', 'btn-row');
+  btnRow.append(importBtn, convertBtn);
+  planCard.append(btnRow, importInput, convertInput, errBox);
   root.append(planCard);
 
-  // Data
+  // ---- Plan dependencies (missingData) ----
+  if (plan && (plan.missingData || []).length) {
+    const depCard = el('section', 'card');
+    depCard.append(el('h2', null, 'Plan dependencies'));
+    const resolved = await getResolvedMissingIds(plan.id);
+    for (const md of plan.missingData) {
+      const row = el('div', 'dep-row');
+      const isDone = resolved.has(md.id);
+      row.append(el('strong', null, `${isDone ? '● ' : '○ '}${md.title}`));
+      if (md.description) row.append(el('p', 'muted small', md.description));
+      if (isDone) {
+        const note = await db.getMeta(`resolvedMissingNote:${plan.id}:${md.id}`, '');
+        row.append(el('p', 'small', `Resolved${note ? `: ${note}` : ''}`));
+      } else {
+        if (md.howToResolve) row.append(el('p', 'small', md.howToResolve));
+        const note = el('input', 'answer');
+        note.placeholder = 'resolution note';
+        const btn = el('button', null, 'Mark resolved');
+        btn.onclick = async () => {
+          await resolveMissingData(plan.id, md.id, note.value.trim());
+          renderSettings(root);
+        };
+        row.append(note, btn);
+      }
+      depCard.append(row);
+    }
+    root.append(depCard);
+  }
+
+  // ---- Data ----
   const dataCard = el('section', 'card');
   dataCard.append(el('h2', null, 'Data'));
   const exportBtn = el('button', 'primary', 'Export everything (JSON)');
   exportBtn.onclick = downloadFullExport;
-  dataCard.append(exportBtn);
 
-  const restoreInput = el('input');
-  restoreInput.type = 'file';
-  restoreInput.accept = 'application/json';
-  restoreInput.style.display = 'none';
-  const restoreBtn = el('button', null, 'Restore from export…');
-  restoreBtn.onclick = () => restoreInput.click();
-  restoreInput.onchange = async () => {
-    const file = restoreInput.files[0];
-    if (!file) return;
+  const restoreInput = filePicker('application/json', async (text) => {
     if (!confirm('Restore will replace ALL current data with the export file. Continue?')) return;
     try {
-      await restoreFromExport(await file.text());
+      await restoreFromExport(text);
       alert('Restored.');
       location.reload();
     } catch (e) {
       alert(`Restore failed: ${e.message}`);
     }
-  };
-  dataCard.append(restoreBtn, restoreInput);
+  });
+  const restoreBtn = el('button', null, 'Restore from export…');
+  restoreBtn.onclick = () => restoreInput.click();
+
+  const dataRow = el('div', 'btn-row');
+  dataRow.append(exportBtn, restoreBtn);
+  dataCard.append(dataRow, restoreInput);
 
   const pending = await queueSize();
-  dataCard.append(el('p', 'muted', pending > 0
-    ? `${pending} judgment call${pending > 1 ? 's' : ''} queued (will retry when online).`
+  dataCard.append(el('p', 'muted small', pending > 0
+    ? `${pending} judgment call${pending > 1 ? 's' : ''} queued — will retry when online; results are provisional until then.`
     : 'Offline queue is empty.'));
   root.append(dataCard);
 
-  // Derived node — capture a mid-session realization as a trackable skill.
+  // ---- Derived node ----
   if (plan) {
     const derivedCard = el('section', 'card');
-    derivedCard.append(el('h2', null, 'New derived node'));
-    derivedCard.append(el('p', 'muted small', 'Capture a realization as a trackable skill node — it enters review like any other.'));
+    derivedCard.append(el('h2', null, 'New derived skill'));
+    derivedCard.append(el('p', 'muted small', 'Capture a mid-session realization as a trackable skill. Derived skills have no teaching lesson and are eligible for review immediately.'));
     const name = el('input', 'answer');
-    name.placeholder = 'name, e.g. "nun-ghunna weight"';
+    name.placeholder = 'name';
     const desc = el('input', 'answer');
     desc.placeholder = 'what exactly the skill is';
-    const add = el('button', null, 'Add node');
+    const add = el('button', null, 'Add skill');
     add.onclick = async () => {
       if (!name.value.trim()) return;
       await createDerivedNode(plan.id, name.value.trim(), desc.value.trim() || name.value.trim());
       name.value = ''; desc.value = '';
-      alert('Derived node added.');
+      add.textContent = 'Added ✓';
     };
     derivedCard.append(name, desc, add);
     root.append(derivedCard);
   }
-}
-
-function renderSettingsPartial(root) {
-  // re-render active-plan label only on next full navigation; cheap approach:
-  getActivePlan().then(p => {
-    const label = root.querySelector('.card p');
-    if (label && p) label.textContent = `Active: ${p.title}`;
-  });
 }

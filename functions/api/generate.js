@@ -26,10 +26,10 @@ export async function onRequestPost({ request, env }) {
     model: env.ANTHROPIC_MODEL || DEFAULT_MODEL,
     max_tokens: 1500,
     system:
-      'You are the tutor for a personal Urdu shayari learning app. The app owns all state; ' +
-      'everything you know about this student is in the context block below. Follow the ' +
-      '"Tutor instructions" section of the context verbatim — the teaching method is defined ' +
-      'there, not here. Respond in prose. Never output JSON.',
+      'You are the tutor inside a personal learning-session app. The app owns all state and ' +
+      'is domain-agnostic; the subject, vocabulary, and method come entirely from the context ' +
+      'block below. Follow the "Tutor instructions" section of the context verbatim — the ' +
+      'teaching method is defined there, not here. Respond in prose. Never output JSON.',
     messages: [
       {
         role: 'user',

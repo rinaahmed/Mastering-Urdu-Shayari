@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mastering-plans.local/plan.schema.json",
+  "title": "Learning Plan (schema v2)",
+  "description": "A domain-agnostic learning plan. The plan supplies all vocabulary, teaching content, checker configuration, and tutor method; the app supplies none.",
+  "type": "object",
+  "required": ["schemaVersion", "id", "title", "tutorInstructions", "skillNodes", "drillTypes", "checkers", "standingElements", "errorCategories", "calibrationExamples", "itemBank", "phases"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "tutorInstructions": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Verbatim text block given to the tutor on every generator call. The teaching method is plan data, not app logic."
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "flagAttemptThreshold": { "type": "number", "default": 8 },
+        "flagAccuracyWindow": { "type": "number", "default": 6 },
+        "reviewNodeCap": { "type": "number", "default": 0.4 },
+        "targetContextTokens": { "type": "number", "default": 3000 },
+        "sessionBlockTarget": { "type": "number", "default": 8 }
+      },
+      "additionalProperties": true
+    },
+    "missingData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "howToResolve": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Data the plan needs but does not contain. Lessons may be blockedOn one of these ids; the lesson cannot start until the user marks it resolved."
+    },
+    "checkers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/checker" },
+      "description": "Plan-declared grading plugins. The app implements only the generic strategies; everything domain-specific lives in config or behind an external URL."
+    },
+    "skillNodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/skillNode" }
+    },
+    "drillTypes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/drillType" }
+    },
+    "standingElements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "minutes", "drillTypeId"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "minutes": { "type": "number" },
+          "description": { "type": "string" },
+          "drillTypeId": { "type": "string" },
+          "skillNodeIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "errorCategories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "rootCause", "instances"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "rootCause": { "type": "string", "minLength": 1 },
+          "skillNodeIds": { "type": "array", "items": { "type": "string" } },
+          "instances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["date", "material", "userDid", "correct"],
+              "properties": {
+                "date": { "type": "string", "minLength": 1 },
+                "material": { "type": "string", "minLength": 1 },
+                "userDid": { "type": "string", "minLength": 1 },
+                "correct": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "calibrationExamples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["drillTypeId", "prompt", "response", "evaluation", "commentary"],
+        "properties": {
+          "drillTypeId": { "type": "string" },
+          "prompt": { "type": "string", "minLength": 1 },
+          "response": { "type": "string", "minLength": 1 },
+          "evaluation": { "type": "string", "minLength": 1 },
+          "commentary": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "itemBank": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "drillTypeId", "prompt", "answer"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "drillTypeId": { "type": "string" },
+          "skillNodeIds": { "type": "array", "items": { "type": "string" } },
+          "prompt": { "type": "string", "minLength": 1 },
+          "answer": { "type": "string", "minLength": 1 },
+          "acceptedAnswers": { "type": "array", "items": { "type": "string" } },
+          "answerNote": { "type": "string" },
+          "direction": { "enum": ["ltr", "rtl"] },
+          "lang": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "weeks"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "weeks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "title", "lessons"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "title": { "type": "string", "minLength": 1 },
+                "lessons": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "$ref": "#/$defs/lesson" }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "checker": {
+      "type": "object",
+      "required": ["id", "name", "strategy"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "strategy": {
+          "enum": ["exact", "normalized-exact", "set-match", "sequence-diff", "numeric", "external", "judgment"]
+        },
+        "config": {
+          "type": "object",
+          "description": "Strategy-specific. exact: {caseSensitive}. normalized-exact: {keepPattern}. set-match: {separator}. sequence-diff: {tokenizer: 'chars'|'whitespace', keep}. numeric: {tolerance}. external: forwarded verbatim to the endpoint."
+        },
+        "externalUrl": { "type": "string", "minLength": 1 },
+        "fallback": {
+          "type": "string",
+          "description": "Checker id used when an external checker is unreachable. The result is marked provisional."
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "strategy": { "const": "external" } }, "required": ["strategy"] },
+          "then": { "required": ["externalUrl"] }
+        }
+      ]
+    },
+    "skillNode": {
+      "type": "object",
+      "required": ["id", "name", "description", "prerequisites", "taughtIn"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "prerequisites": { "type": "array", "items": { "type": "string" } },
+        "taughtIn": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Lesson id. HARD GATE: the node is ineligible for any drill or review until this lesson is complete, regardless of prerequisites."
+        },
+        "status": {
+          "enum": ["not-attempted", "emerging", "shaky", "solid"],
+          "description": "Optional seed value for imported prior state."
+        },
+        "confidence": {
+          "type": "number", "minimum": 0, "maximum": 1,
+          "description": "Optional seed value 0..1."
+        }
+      },
+      "additionalProperties": false
+    },
+    "drillType": {
+      "type": "object",
+      "required": ["id", "name", "format", "inputShape", "evaluationMode"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "format": { "type": "string", "minLength": 1 },
+        "inputShape": { "enum": ["pattern", "number", "word", "text"] },
+        "evaluationMode": { "enum": ["deterministic", "judgment", "hybrid"] },
+        "checkerId": { "type": "string", "description": "References checkers[].id — a free string, not an app enum." },
+        "hybrid": {
+          "type": "object",
+          "required": ["deterministicAxis", "judgmentAxis"],
+          "properties": {
+            "deterministicAxis": { "type": "string", "minLength": 1 },
+            "judgmentAxis": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        "producesArtifact": { "type": "boolean" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "evaluationMode": { "enum": ["deterministic", "hybrid"] } }, "required": ["evaluationMode"] },
+          "then": { "required": ["checkerId"] }
+        },
+        {
+          "if": { "properties": { "evaluationMode": { "const": "hybrid" } }, "required": ["evaluationMode"] },
+          "then": { "required": ["hybrid"] }
+        }
+      ]
+    },
+    "contentBlock": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["prose", "example", "generate", "reflect", "drill"] },
+        "body": { "type": "string" },
+        "commentary": { "type": "string" },
+        "drillTypeId": { "type": "string" },
+        "itemIds": { "type": "array", "items": { "type": "string" } },
+        "count": { "type": "number", "minimum": 1 },
+        "direction": { "enum": ["ltr", "rtl"] },
+        "lang": { "type": "string" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "enum": ["prose", "example", "generate", "reflect"] } }, "required": ["type"] },
+          "then": { "required": ["body"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "drill" } }, "required": ["type"] },
+          "then": { "required": ["drillTypeId"] }
+        }
+      ]
+    },
+    "lesson": {
+      "type": "object",
+      "required": ["id", "title", "lessonType", "objective", "masteryCriteria", "content"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "lessonType": { "enum": ["study", "drill", "production", "mixed"] },
+        "objective": { "type": "string", "minLength": 1 },
+        "masteryCriteria": { "type": "string", "minLength": 1 },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/contentBlock" },
+          "description": "Ordered teaching blocks. A study lesson may be entirely prose and generate blocks with no drills."
+        },
+        "drillTypeIds": { "type": "array", "items": { "type": "string" } },
+        "skillNodeIds": { "type": "array", "items": { "type": "string" } },
+        "estimatedMinutes": { "type": "number" },
+        "blockedOn": {
+          "type": "string",
+          "description": "A missingData id. The lesson cannot start until it is resolved."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
