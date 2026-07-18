@@ -1,13 +1,15 @@
 // Lessons view — the primary navigation surface. Every lesson in the active
-// plan, flattened into one scrollable list in plan order (no grouping by
-// week; the app's own UI calls that grouping level a "unit" and shows it as
-// per-row context, e.g. "Unit 3"). Status is visible at a glance — done,
-// current, blocked, or not yet started — via shape/border/weight, no tap
-// required and never colour alone.
+// plan, grouped by phase (collapsible) and unit (the app's own UI name for
+// the plan's "week" level) for display only — the underlying plan order
+// (phases -> weeks -> lessons) is untouched and is what numbering and the
+// starting-position bulk action both follow. Status is visible at a glance —
+// done, current, blocked, or not yet started — via shape/border/weight, no
+// tap required and never colour alone.
 
 import { getActivePlan, getCompletedLessonIds, getResolvedMissingIds,
   getCurrentLessonId, getPendingOpenLessonId, startNextLesson, jumpToLesson } from '../session.js';
 import { flattenLessons } from '../schema.js';
+import { renderGroupedLessons } from './lessonGroups.js';
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -108,31 +110,21 @@ export async function renderLessons(root, banner = null) {
   if (banner) actionCard.append(renderBanner(banner));
   root.append(actionCard);
 
-  // ---- full flat list, in plan order, not grouped by unit ----
-  const list = el('div', 'lesson-list');
-  for (const lesson of lessons) {
-    const isDone = doneIds.has(lesson.id);
-    const isCurrent = lesson.id === currentId;
-    const isBlocked = !!lesson.blockedOn && !resolvedMissing.has(lesson.blockedOn) && !isDone;
-    const state = { isDone, isCurrent, isBlocked };
+  // ---- grouped by phase (collapsible) and unit, in plan order ----
+  const rowState = (lesson) => ({
+    isDone: doneIds.has(lesson.id),
+    isCurrent: lesson.id === currentId,
+    isBlocked: !!lesson.blockedOn && !resolvedMissing.has(lesson.blockedOn) && !doneIds.has(lesson.id)
+  });
 
-    const classes = ['lesson-row'];
-    if (isDone) classes.push('done');
-    if (isCurrent) classes.push('current');
-    if (isBlocked) classes.push('blocked');
-    if (!isDone && !isCurrent && !isBlocked) classes.push('not-started');
-
-    const row = el('button', classes.join(' '));
-    row.append(el('span', 'lesson-marker', lessonMarker(state)));
-    const info = el('span', 'lesson-info');
-    info.append(el('span', 'lesson-title', lesson.title));
-    info.append(el('span', 'lesson-meta', `${lesson.phaseTitle} · Unit ${lesson.unitNumber} · ${statusLabel(state)}`));
-    row.append(info);
-    row.onclick = async () => {
+  root.append(renderGroupedLessons({
+    lessons,
+    rowState,
+    rowMarker: lessonMarker,
+    rowStatusLabel: statusLabel,
+    onRowClick: async (lesson) => {
       await jumpToLesson(lesson.id);
       location.hash = '#today';
-    };
-    list.append(row);
-  }
-  root.append(list);
+    }
+  }));
 }

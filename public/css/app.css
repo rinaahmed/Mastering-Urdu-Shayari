@@ -259,7 +259,7 @@ select { width: auto; max-width: 100%; }
 .pager-btn { flex: 1; max-width: 40%; }
 .pager-pos { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* ---------- lessons (primary navigation: flat list, no week grouping) ---------- */
+/* ---------- lessons (primary navigation: grouped by phase/unit, plan order) ---------- */
 
 .lesson-action-card { margin-bottom: 18px; }
 .lesson-action-note { border: var(--border-w) solid var(--ink); padding: 10px 14px; margin-top: 12px; }
@@ -267,6 +267,24 @@ select { width: auto; max-width: 100%; }
 .lesson-action-note p:first-child { margin-top: 0; }
 .lesson-action-note.blocked { border-style: dashed; }
 .lesson-action-note.done { border-style: solid; border-width: calc(var(--border-w) + 2px); }
+
+.lessons-groups { display: flex; flex-direction: column; gap: 14px; }
+
+details.phase-section { border: var(--border-w) solid var(--ink); }
+.phase-summary {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+.phase-progress { font-weight: 400; color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.phase-body { padding: 4px 14px 14px; border-top: var(--border-w) solid var(--ink); }
+
+.unit-heading { font-size: 0.9rem; font-weight: 700; margin: 14px 0 8px; }
+.unit-heading:first-child { margin-top: 10px; }
 
 .lesson-list { display: flex; flex-direction: column; gap: 10px; }
 
@@ -279,6 +297,14 @@ button.lesson-row {
   padding: 12px 14px;
   text-align: left;
   border-style: solid;
+}
+.lesson-index {
+  flex-shrink: 0;
+  width: 3.4em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 .lesson-marker {
   flex-shrink: 0;

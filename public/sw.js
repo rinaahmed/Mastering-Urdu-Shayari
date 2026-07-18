@@ -9,7 +9,7 @@
 // can go stale-vs-live (it's fetched network-first) while the rest of the
 // app silently keeps serving whatever was cached at the last sw.js change.
 
-const CACHE = 'bayaz-v3';
+const CACHE = 'bayaz-v4';
 
 const SHELL = [
   '/',
@@ -33,6 +33,7 @@ const SHELL = [
   '/js/exporter.js',
   '/js/views/today.js',
   '/js/views/lessons.js',
+  '/js/views/lessonGroups.js',
   '/js/views/progress.js',
   '/js/views/portfolio.js',
   '/js/views/settings.js',

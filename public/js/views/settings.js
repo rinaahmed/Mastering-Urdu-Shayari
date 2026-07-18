@@ -9,6 +9,7 @@ import { getActivePlan, getResolvedMissingIds, resolveMissingData, createDerived
   getCompletedLessonIds, getCurrentLessonId, setStartingPosition } from '../session.js';
 import { getVersionInfo, formatVersionBadge, formatBuiltAt } from '../version.js';
 import { flattenLessons } from '../schema.js';
+import { renderGroupedLessons } from './lessonGroups.js';
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -137,44 +138,47 @@ export async function renderSettings(root, opts = {}) {
     spCard.append(el('p', 'muted small',
       'Already partway through this plan? Tap the lesson you want to resume at — every lesson before it is marked done and it becomes current, in one step.'));
 
-    const spList = el('div', 'lesson-list');
-    spList.hidden = true;
+    const spWrap = el('div', 'sp-wrap');
+    spWrap.hidden = true;
 
     const buildSpList = async () => {
-      spList.innerHTML = '';
+      spWrap.innerHTML = '';
       const lessons = flattenLessons(plan);
-      const [doneIds, currentId] = await Promise.all([getCompletedLessonIds(plan.id), getCurrentLessonId()]);
-      lessons.forEach((lesson, i) => {
-        const isDone = doneIds.has(lesson.id);
-        const isCurrent = lesson.id === currentId;
-        const row = el('button', `lesson-row${isDone ? ' done' : ''}${isCurrent ? ' current' : ''}${!isDone && !isCurrent ? ' not-started' : ''}`);
-        row.append(el('span', 'lesson-marker', isCurrent ? '▸' : isDone ? '●' : '○'));
-        const info = el('span', 'lesson-info');
-        info.append(el('span', 'lesson-title', lesson.title));
-        info.append(el('span', 'lesson-meta', `${lesson.phaseTitle} · Unit ${lesson.unitNumber}`));
-        row.append(info);
-        row.onclick = async () => {
-          const ok = confirm(i === 0
+      const [doneIds, currentId, resolvedMissing] = await Promise.all([
+        getCompletedLessonIds(plan.id), getCurrentLessonId(), getResolvedMissingIds(plan.id)
+      ]);
+      const rowState = (lesson) => ({
+        isDone: doneIds.has(lesson.id),
+        isCurrent: lesson.id === currentId,
+        isBlocked: !!lesson.blockedOn && !resolvedMissing.has(lesson.blockedOn) && !doneIds.has(lesson.id)
+      });
+      spWrap.append(renderGroupedLessons({
+        lessons,
+        rowState,
+        rowMarker: (state) => state.isCurrent ? '▸' : state.isDone ? '●' : state.isBlocked ? '🔒' : '○',
+        rowStatusLabel: (state) => state.isCurrent ? 'current' : state.isDone ? 'done' : state.isBlocked ? 'blocked' : 'not started',
+        onRowClick: async (lesson) => {
+          const priorCount = lesson.globalIndex - 1;
+          const ok = confirm(priorCount === 0
             ? `Set starting position to "${lesson.title}"?`
-            : `Set starting position to "${lesson.title}"? This marks the ${i} lesson${i === 1 ? '' : 's'} before it as done.`);
+            : `Set starting position to "${lesson.title}"? This marks the ${priorCount} lesson${priorCount === 1 ? '' : 's'} before it as done.`);
           if (!ok) return;
           await setStartingPosition(lesson.id);
           location.hash = '#lessons';
-        };
-        spList.append(row);
-      });
+        }
+      }));
     };
 
     const spToggle = el('button', null, 'Set starting position…');
     spToggle.onclick = async () => {
-      spList.hidden = !spList.hidden;
-      if (!spList.hidden) await buildSpList();
+      spWrap.hidden = !spWrap.hidden;
+      if (!spWrap.hidden) await buildSpList();
     };
-    spCard.append(spToggle, spList);
+    spCard.append(spToggle, spWrap);
     root.append(spCard);
 
     if (opts.justImported) {
-      spList.hidden = false;
+      spWrap.hidden = false;
       await buildSpList();
     }
   }
