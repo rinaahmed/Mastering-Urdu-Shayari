@@ -203,6 +203,36 @@ export async function startNextLesson() {
   return { type: 'started', session };
 }
 
+// Bulk-set where someone is in the plan in one action, for a person who's
+// already progressed through this material elsewhere (a re-import, a switch
+// from paper notes, etc.) and would otherwise have to tap "Start next lesson"
+// once per lesson just to reach where they actually are. Marks every lesson
+// before lessonId (in plan order) complete and makes lessonId itself current;
+// lessons at or after it are left untouched.
+export async function setStartingPosition(lessonId) {
+  const plan = await getActivePlan();
+  if (!plan) throw new Error('No active plan.');
+  const lessons = flattenLessons(plan);
+  const idx = lessons.findIndex((l) => l.id === lessonId);
+  if (idx === -1) throw new Error('Lesson not found in plan.');
+
+  const active = await getActiveSession();
+  if (active) await abandonSession(active);
+
+  const now = Date.now();
+  for (let i = 0; i < idx; i++) {
+    await db.put(STORES.lessonState, {
+      id: lessons[i].id,
+      planId: plan.id,
+      status: 'complete',
+      completedAt: now
+    });
+  }
+
+  await setCurrentLessonId(lessonId);
+  await db.setMeta('pendingOpenLessonId', null);
+}
+
 // ---- navigation ----
 
 export async function goTo(session, index) {

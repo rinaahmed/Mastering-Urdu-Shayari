@@ -5,8 +5,10 @@
 import { db, STORES } from '../db.js';
 import { importPlan, convertV1, downloadFullExport, downloadJson, restoreFromExport } from '../exporter.js';
 import { queueSize } from '../api.js';
-import { getActivePlan, getResolvedMissingIds, resolveMissingData, createDerivedNode } from '../session.js';
+import { getActivePlan, getResolvedMissingIds, resolveMissingData, createDerivedNode,
+  getCompletedLessonIds, getCurrentLessonId, setStartingPosition } from '../session.js';
 import { getVersionInfo, formatVersionBadge, formatBuiltAt } from '../version.js';
+import { flattenLessons } from '../schema.js';
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -28,7 +30,7 @@ function filePicker(accept, onText) {
   return input;
 }
 
-export async function renderSettings(root) {
+export async function renderSettings(root, opts = {}) {
   root.innerHTML = '';
   const plan = await getActivePlan();
 
@@ -77,7 +79,7 @@ export async function renderSettings(root) {
     if (result.ok) {
       errBox.innerHTML = '';
       errBox.append(el('p', 'verdict ok small', `Imported: ${result.plan.title}`));
-      renderSettings(root);
+      renderSettings(root, { justImported: true });
     } else {
       showErrors(`Import refused (${result.errors.length} problem${result.errors.length > 1 ? 's' : ''}):`, result.errors);
     }
@@ -109,7 +111,7 @@ export async function renderSettings(root) {
         if (result.ok) {
           errBox.innerHTML = '';
           errBox.append(el('p', 'verdict ok small', `Imported: ${result.plan.title}`));
-          renderSettings(root);
+          renderSettings(root, { justImported: true });
         } else {
           showErrors('Draft failed validation:', result.errors);
         }
@@ -124,6 +126,58 @@ export async function renderSettings(root) {
   btnRow.append(importBtn, convertBtn);
   planCard.append(btnRow, importInput, convertInput, errBox);
   root.append(planCard);
+
+  // ---- Starting position ----
+  // Bulk-set where someone is in the plan in one tap, instead of tapping
+  // "Start next lesson" 25+ times to reach a point they've already reached
+  // elsewhere. Surfaced here always, and auto-expanded right after an import.
+  if (plan) {
+    const spCard = el('section', 'card');
+    spCard.append(el('h2', null, 'Starting position'));
+    spCard.append(el('p', 'muted small',
+      'Already partway through this plan? Tap the lesson you want to resume at — every lesson before it is marked done and it becomes current, in one step.'));
+
+    const spList = el('div', 'lesson-list');
+    spList.hidden = true;
+
+    const buildSpList = async () => {
+      spList.innerHTML = '';
+      const lessons = flattenLessons(plan);
+      const [doneIds, currentId] = await Promise.all([getCompletedLessonIds(plan.id), getCurrentLessonId()]);
+      lessons.forEach((lesson, i) => {
+        const isDone = doneIds.has(lesson.id);
+        const isCurrent = lesson.id === currentId;
+        const row = el('button', `lesson-row${isDone ? ' done' : ''}${isCurrent ? ' current' : ''}${!isDone && !isCurrent ? ' not-started' : ''}`);
+        row.append(el('span', 'lesson-marker', isCurrent ? '▸' : isDone ? '●' : '○'));
+        const info = el('span', 'lesson-info');
+        info.append(el('span', 'lesson-title', lesson.title));
+        info.append(el('span', 'lesson-meta', `${lesson.phaseTitle} · Unit ${lesson.unitNumber}`));
+        row.append(info);
+        row.onclick = async () => {
+          const ok = confirm(i === 0
+            ? `Set starting position to "${lesson.title}"?`
+            : `Set starting position to "${lesson.title}"? This marks the ${i} lesson${i === 1 ? '' : 's'} before it as done.`);
+          if (!ok) return;
+          await setStartingPosition(lesson.id);
+          location.hash = '#lessons';
+        };
+        spList.append(row);
+      });
+    };
+
+    const spToggle = el('button', null, 'Set starting position…');
+    spToggle.onclick = async () => {
+      spList.hidden = !spList.hidden;
+      if (!spList.hidden) await buildSpList();
+    };
+    spCard.append(spToggle, spList);
+    root.append(spCard);
+
+    if (opts.justImported) {
+      spList.hidden = false;
+      await buildSpList();
+    }
+  }
 
   // ---- Plan dependencies (missingData) ----
   if (plan && (plan.missingData || []).length) {
