@@ -5,7 +5,7 @@
 import { db } from './db.js';
 import { seedDefaultPlan } from './exporter.js';
 import { installQueueFlusher } from './api.js';
-import { applyEvaluation, getActivePlan } from './session.js';
+import { applyEvaluation } from './session.js';
 import { getVersionInfo, formatVersionBadge } from './version.js';
 import { renderToday } from './views/today.js';
 import { renderLessons } from './views/lessons.js';
@@ -43,12 +43,6 @@ async function applyEinkMode() {
   document.body.classList.toggle('eink', !!eink);
 }
 
-async function setTitle() {
-  const plan = await getActivePlan();
-  const h1 = document.getElementById('app-title');
-  if (plan && h1) h1.textContent = plan.title;
-}
-
 async function showVersionBadge() {
   const badge = document.getElementById('version-badge');
   if (!badge) return;
@@ -59,7 +53,6 @@ async function showVersionBadge() {
 async function boot() {
   await applyEinkMode();
   await seedDefaultPlan();
-  await setTitle();
   await showVersionBadge();
 
   // When a queued judgment call finally succeeds, apply it to its screen.

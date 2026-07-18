@@ -62,10 +62,12 @@ There is no build step, so there's no git SHA or build number available at runti
 
 ```json
 {
-  "version": "YYYY.MM.DD.HHMM",
+  "version": "N",
   "builtAt": "<ISO 8601 UTC timestamp>"
 }
 ```
+
+`version` is a short, monotonically increasing build counter (just increment by 1 each push) — kept short so the topbar badge stays a glance-able `vN` rather than a long timestamp. `builtAt` carries the full detail and is shown alongside it in the Settings → About card.
 
 `js/version.js` fetches it with `cache: 'no-store'` (and the service worker fetches it network-first) so the badge always reflects the deployed file, not a stale cache. It's shown in the topbar (links to Settings) and in the Settings → About card, so a quick glance confirms whether the tab is showing the latest deploy.
 
