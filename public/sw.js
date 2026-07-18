@@ -1,8 +1,15 @@
 // Service worker: offline-first app shell. Everything works offline except
 // /api/* (generation and judgment) and plan-declared external checkers —
 // the app layer queues, retries, and marks results provisional.
+//
+// CACHE embeds the same build counter as public/version.json's "version"
+// field — bump both together on every deploy. Browsers only reinstall a
+// service worker (and thus refresh its cache) when the sw.js file's bytes
+// change; without this literal number changing here too, the version badge
+// can go stale-vs-live (it's fetched network-first) while the rest of the
+// app silently keeps serving whatever was cached at the last sw.js change.
 
-const CACHE = 'ls-shell-v4';
+const CACHE = 'bayaz-v2';
 
 const SHELL = [
   '/',

@@ -71,6 +71,8 @@ There is no build step, so there's no git SHA or build number available at runti
 
 `js/version.js` fetches it with `cache: 'no-store'` (and the service worker fetches it network-first) so the badge always reflects the deployed file, not a stale cache. It's shown in the topbar (links to Settings) and in the Settings → About card, so a quick glance confirms whether the tab is showing the latest deploy.
 
+**Every push bumps two things in lockstep:** `version.json`'s `version` field, and `sw.js`'s `CACHE` constant (`'bayaz-vN'`, same N). Browsers only reinstall a service worker — and thus refresh everything it caches — when `sw.js`'s own bytes change. `version.json` is fetched network-first regardless, so if only it is bumped, the badge silently goes ahead of the actual cached app shell (users see a new version number but stale JS/HTML underneath). Keeping the counter embedded directly in `sw.js` guarantees the two can't drift apart.
+
 ## Non-negotiables held
 
 - API key lives only in the Worker environment.
