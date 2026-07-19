@@ -5,6 +5,7 @@ import { db, STORES, exportAll, importAll } from './db.js';
 import { validatePlan, auditTeachingOrder } from './schema.js';
 import { migrateV1toV2 } from './migrate.js';
 import { newNodeState } from './ledger.js';
+import { getActiveSession, abandonSession } from './session.js';
 
 // Import a plan file. Order: parse → structural validation → teaching-order
 // audit → store. Every failure reports its JSON path; audit violations refuse
@@ -37,6 +38,16 @@ export async function importPlan(planJson) {
   }
 
   await db.put(STORES.plans, plan);
+
+  // Any in-progress session was assembled (screen by screen, once, at
+  // startSession time) from whatever plan was active before this import —
+  // overwriting the plan record above does not retroactively rebuild it.
+  // Left alone, Today would keep resuming that stale session indefinitely,
+  // silently ignoring everything this import just changed. Abandon it so
+  // the next visit to Today builds a fresh session from the plan just
+  // imported, whether this is a brand-new plan or an update to the same one.
+  const activeSession = await getActiveSession();
+  if (activeSession) await abandonSession(activeSession);
 
   // Seed skill-node ledger state without clobbering existing progress.
   const now = Date.now();

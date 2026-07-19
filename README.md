@@ -40,6 +40,8 @@ Validated on import against `public/plans/plan.schema.json` (structure) plus run
 
 `Settings → Convert v1 plan` migrates a v1 file: structure converts automatically; teaching content and external checker URLs are reported as items to author by hand, with a downloadable v2 draft.
 
+Importing (including re-importing an update to the same plan id) always abandons any in-progress session first. A session's screens are assembled once, at start; without this, re-importing an edited plan while a session was already active would silently keep showing the old, pre-edit content until that specific session happened to end on its own.
+
 ## Session engine
 
 Assembled locally into an ordered screen list before any API call: standing elements (skipped while their nodes are untaught) → the current lesson content block by block (or its blocker) → interleaved review of due, *eligible* nodes weighted toward low confidence and capped per `settings.reviewNodeCap` → flat-progress flags ("this isn't moving, change approach") instead of more reps → summary. Completing every lesson screen marks the lesson complete, which is what opens its nodes for future scheduling.
