@@ -9,7 +9,7 @@ import { applyEvaluation } from './session.js';
 import { getVersionInfo, formatVersionBadge } from './version.js';
 import { renderToday } from './views/today.js';
 import { renderLessons } from './views/lessons.js';
-import { renderProgress } from './views/progress.js';
+import { renderProgress, renderAllSkills } from './views/progress.js';
 import { renderPortfolio } from './views/portfolio.js';
 import { renderSettings } from './views/settings.js';
 
@@ -17,6 +17,7 @@ const routes = {
   '#today': renderToday,
   '#lessons': renderLessons,
   '#progress': renderProgress,
+  '#progress-all': renderAllSkills, // secondary view, one tap from Progress — not a tab of its own
   '#portfolio': renderPortfolio,
   '#settings': renderSettings
 };
@@ -25,8 +26,9 @@ const main = document.getElementById('main');
 
 function route() {
   const hash = routes[location.hash] ? location.hash : '#today';
+  const navHash = hash === '#progress-all' ? '#progress' : hash;
   document.querySelectorAll('nav a').forEach((a) => {
-    a.classList.toggle('active', a.getAttribute('href') === hash);
+    a.classList.toggle('active', a.getAttribute('href') === navHash);
   });
   routes[hash](main);
 }

@@ -60,10 +60,16 @@ export async function importPlan(planJson) {
     }
   }
 
+  // currentLessonId is global progress state, not scoped to a plan id — if
+  // this import is switching to a genuinely different plan, the previous
+  // pointer names a lesson that doesn't exist here, so it must reset to this
+  // plan's first lesson. Re-importing (updating) the SAME plan id keeps the
+  // existing position rather than bouncing the user back to lesson one.
+  const previousPlanId = await db.getMeta('activePlanId');
   await db.setMeta('activePlanId', plan.id);
   const firstLesson = plan.phases[0].weeks[0].lessons[0];
   const current = await db.getMeta('currentLessonId');
-  if (!current) await db.setMeta('currentLessonId', firstLesson.id);
+  if (!current || previousPlanId !== plan.id) await db.setMeta('currentLessonId', firstLesson.id);
 
   return { ok: true, errors: [], plan };
 }
