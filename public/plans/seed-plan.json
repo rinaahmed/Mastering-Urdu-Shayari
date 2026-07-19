@@ -142,8 +142,8 @@
       "id": "se-behr-rep",
       "title": "Behr rep",
       "minutes": 5,
-      "description": "Recite and type the arkaan pattern of a learned behr from memory. Opens every session once behrs have been taught.",
-      "drillTypeId": "dt-behr-rep",
+      "description": "A fresh recall challenge for a learned behr's arkaan pattern, generated new each session. Opens every session once behrs have been taught.",
+      "generatePrompt": "Pick one behr the learner has been taught so far (mutaqarib and/or hazaj — vary which one across sessions, favoring whichever was taught more recently). Name the behr and ask the learner to recite its arkaan digit pattern from memory (e.g. '122 122 122 122'). Then reveal the correct pattern on a new line so they can check themselves. Keep it to a few lines — this is a five-minute warm-up, not a lesson.",
       "skillNodeIds": ["n-arkaan", "n-behr-mutaqarib", "n-behr-hazaj"]
     }
   ],

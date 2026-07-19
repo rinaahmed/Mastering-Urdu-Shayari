@@ -62,6 +62,24 @@ export function assembleSession(plan, nodeStates, currentLessonId, completedLess
     // Hard gate: skip the element entirely while none of its nodes are taught.
     const eligibleIds = nodeIds.filter(eligibleStrict);
     if (nodeIds.length > 0 && eligibleIds.length === 0) continue;
+
+    if (se.generatePrompt) {
+      // Tutor-generated standing element: the screen carries only the
+      // instructions for the tutor (screen.block.body) — no item-bank pick,
+      // no caching. renderGenerate calls the API fresh every session and
+      // displays only its output, never these instructions themselves.
+      screens.push({
+        kind: 'generate',
+        origin: 'standing',
+        title: se.title,
+        minutes: se.minutes,
+        standingElementId: se.id,
+        block: { type: 'generate', body: se.generatePrompt },
+        skillNodeIds: eligibleIds
+      });
+      continue;
+    }
+
     const [item] = pickItems(plan, se.drillTypeId,
       eligibleIds.length ? ((id) => eligibleIds.includes(id)) : null, usedItemIds, 1);
     if (!item) continue;

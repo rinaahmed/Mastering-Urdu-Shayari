@@ -60,16 +60,25 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "minutes", "drillTypeId"],
+        "required": ["id", "title", "minutes"],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "title": { "type": "string", "minLength": 1 },
           "minutes": { "type": "number" },
           "description": { "type": "string" },
           "drillTypeId": { "type": "string" },
+          "generatePrompt": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Alternative to drillTypeId: a prompt for the tutor to interpret, called fresh at the start of every session instead of picking a static item from itemBank. Mutually exclusive with drillTypeId."
+          },
           "skillNodeIds": { "type": "array", "items": { "type": "string" } }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          { "required": ["drillTypeId"] },
+          { "required": ["generatePrompt"] }
+        ]
       }
     },
     "errorCategories": {

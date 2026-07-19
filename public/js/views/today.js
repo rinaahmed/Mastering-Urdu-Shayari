@@ -111,7 +111,8 @@ function renderScreen(root, plan, session) {
   const head = el('div', 'screen-head');
   const kindLabel = {
     drill: { standing: 'Standing', lesson: 'Drill', review: 'Review' }[screen.origin] || 'Drill',
-    prose: 'Study', example: 'Example', generate: 'Tutor', reflect: 'Reflect',
+    generate: screen.origin === 'standing' ? 'Standing' : 'Tutor',
+    prose: 'Study', example: 'Example', reflect: 'Reflect',
     flag: 'Flag', blocked: 'Blocked', summary: 'Done'
   }[screen.kind] || screen.kind;
   head.append(el('span', 'chip', kindLabel));

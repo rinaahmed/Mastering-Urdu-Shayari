@@ -136,6 +136,9 @@ export function validatePlan(plan) {
   }
 
   // ---- standingElements ----
+  // Either drillTypeId (pick a static item from itemBank each session, as
+  // before) or generatePrompt (call the tutor at session start for fresh
+  // material each time — never a cached item) — not both, not neither.
   if (!isArr(plan.standingElements)) {
     err('standingElements', 'required array (may be empty)');
   } else {
@@ -144,7 +147,12 @@ export function validatePlan(plan) {
       if (!isStr(s.id)) err(`${p}.id`, 'required string');
       if (!isStr(s.title)) err(`${p}.title`, 'required string');
       if (!isNum(s.minutes)) err(`${p}.minutes`, 'required number');
-      if (!drillIds.has(s.drillTypeId)) err(`${p}.drillTypeId`, `unknown drill type "${s.drillTypeId}"`);
+      if (s.generatePrompt !== undefined) {
+        if (!isStr(s.generatePrompt)) err(`${p}.generatePrompt`, 'must be a non-empty string');
+        if (s.drillTypeId !== undefined) err(`${p}.drillTypeId`, 'must not be set alongside generatePrompt — a standing element is either itemBank-backed or tutor-generated, not both');
+      } else if (!drillIds.has(s.drillTypeId)) {
+        err(`${p}.drillTypeId`, `unknown drill type "${s.drillTypeId}" (or provide generatePrompt instead, for a tutor-generated standing element)`);
+      }
       (s.skillNodeIds || []).forEach((id, j) => {
         if (!nodeIds.has(id)) err(`${p}.skillNodeIds[${j}]`, `unknown node id "${id}"`);
       });
