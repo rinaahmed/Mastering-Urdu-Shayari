@@ -272,6 +272,10 @@
         "drillTypeId": { "type": "string" },
         "itemIds": { "type": "array", "items": { "type": "string" } },
         "count": { "type": "number", "minimum": 1 },
+        "expectsResponse": {
+          "type": "boolean",
+          "description": "generate blocks only. When true, the tutor's generated text is followed by a response input; the tutor evaluates the reply (open-ended, not pass/fail) before the screen is done. Unset/false: one-shot, read-only, as before."
+        },
         "direction": { "enum": ["ltr", "rtl"] },
         "lang": { "type": "string" }
       },
@@ -284,6 +288,10 @@
         {
           "if": { "properties": { "type": { "const": "drill" } }, "required": ["type"] },
           "then": { "required": ["drillTypeId"] }
+        },
+        {
+          "if": { "properties": { "type": { "not": { "const": "generate" } } }, "required": ["type"] },
+          "then": { "not": { "required": ["expectsResponse"] } }
         }
       ]
     },

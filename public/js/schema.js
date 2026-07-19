@@ -3,6 +3,13 @@
 // teaching-order audit that blocks import when a drill exercises a node whose
 // taughtIn lesson comes later in plan order.
 
+// generate blocks are one-shot by default (tutor expands the body into
+// material, shown once, no reply). A generate block with
+// expectsResponse: true is a genuine exchange instead — after the tutor's
+// text appears, the person can type a response, and the tutor evaluates it
+// (open-ended judgment, not pass/fail) before the screen counts as done. Use
+// this for exercises phrased as questions to the learner ("you derive it");
+// leave it unset for material meant only to be read.
 export const CONTENT_TYPES = ['prose', 'example', 'generate', 'reflect', 'drill'];
 export const LESSON_TYPES = ['study', 'drill', 'production', 'mixed'];
 export const EVALUATION_MODES = ['deterministic', 'judgment', 'hybrid'];
@@ -257,6 +264,10 @@ export function validatePlan(plan) {
                 });
               } else {
                 if (!isStr(b.body)) err(`${s}.body`, `required for ${b.type} blocks`);
+              }
+              if (b.expectsResponse !== undefined) {
+                if (typeof b.expectsResponse !== 'boolean') err(`${s}.expectsResponse`, 'must be a boolean');
+                if (b.type !== 'generate') err(`${s}.expectsResponse`, 'only meaningful on generate blocks');
               }
               if (b.direction !== undefined && !['ltr', 'rtl'].includes(b.direction)) err(`${s}.direction`, 'must be "ltr" or "rtl"');
             });

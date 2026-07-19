@@ -144,10 +144,13 @@ function renderPager(root, plan, session, screen) {
 
   const next = el('button', 'pager-btn primary', 'Next ›');
   next.disabled = session.index >= session.screens.length - 1;
-  const needsAction = (screen.kind === 'drill' || screen.kind === 'flag') && !screen.done;
+  const expectsResponse = screen.kind === 'generate' && screen.block && screen.block.expectsResponse;
+  const needsAction = ((screen.kind === 'drill' || screen.kind === 'flag') || expectsResponse) && !screen.done;
   if (needsAction) next.disabled = true;
   next.onclick = async () => {
-    if (['prose', 'example', 'generate', 'blocked'].includes(screen.kind) && !screen.done) {
+    const autoCompletable = ['prose', 'example', 'blocked'].includes(screen.kind) ||
+      (screen.kind === 'generate' && !expectsResponse);
+    if (autoCompletable && !screen.done) {
       await markScreenDone(session, session.index);
     }
     if (screen.kind === 'reflect' && !screen.done) {
@@ -178,22 +181,62 @@ function renderExample(body, root, plan, session, screen) {
 async function renderGenerate(body, root, plan, session, screen) {
   if (screen.generatedText) {
     body.append(md(screen.generatedText));
+  } else {
+    const out = el('div', 'tutor-out', 'Preparing…');
+    body.append(out);
+    try {
+      const context = await buildContext(plan, session, screen, null, null);
+      const text = await generate(context, screen.block.body);
+      screen.generatedText = text;
+      await saveSession(session);
+      out.textContent = '';
+      out.append(md(text));
+    } catch (e) {
+      out.textContent = e instanceof OfflineError
+        ? 'Offline — this block needs a connection to expand. The plan\'s own material continues on the next screen.'
+        : `Tutor error: ${e.message}`;
+      return; // nothing generated yet — no response to collect
+    }
+  }
+
+  if (!screen.block.expectsResponse) return;
+
+  // The generated text poses a question rather than just presenting
+  // material — collect a typed response and have the tutor evaluate it
+  // (open-ended judgment, not pass/fail) before this screen counts as done.
+  if (screen.done) {
+    if (screen.response) body.append(el('p', 'response', `You: ${screen.response}`));
+    if (screen.feedbackText) body.append(md(screen.feedbackText));
     return;
   }
-  const out = el('div', 'tutor-out', 'Preparing…');
-  body.append(out);
-  try {
-    const context = await buildContext(plan, session, screen, null, null);
-    const text = await generate(context, screen.block.body);
-    screen.generatedText = text;
-    await saveSession(session);
-    out.textContent = '';
-    out.append(md(text));
-  } catch (e) {
-    out.textContent = e instanceof OfflineError
-      ? 'Offline — this block needs a connection to expand. The plan\'s own material continues on the next screen.'
-      : `Tutor error: ${e.message}`;
-  }
+
+  const input = el('textarea', 'answer');
+  input.placeholder = 'your response…';
+  body.append(input);
+  const submit = el('button', 'primary', 'Submit');
+  const out = el('div', 'tutor-out');
+  submit.onclick = async () => {
+    const value = input.value.trim();
+    if (!value) return;
+    submit.disabled = true;
+    out.textContent = 'Asking the tutor…';
+    try {
+      const context = await buildContext(plan, session, screen, null, null);
+      const feedback = await generate(context,
+        `The learner's response to the above was: "${value}"\n\nGive feedback on it, per the standing tutor rules — point at where it's wrong and why rather than just correcting it, confirm plainly if it's right.`);
+      screen.response = value;
+      screen.feedbackText = feedback;
+      screen.done = true;
+      await saveSession(session);
+      renderToday(root);
+    } catch (e) {
+      submit.disabled = false;
+      out.textContent = e instanceof OfflineError
+        ? 'Offline — feedback needs a connection. Try again once online; your response is not lost.'
+        : `Tutor error: ${e.message}`;
+    }
+  };
+  body.append(submit, out);
 }
 
 function renderReflect(body, root, plan, session, screen) {
