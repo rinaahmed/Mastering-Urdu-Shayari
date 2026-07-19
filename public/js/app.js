@@ -52,6 +52,39 @@ async function showVersionBadge() {
   badge.textContent = formatVersionBadge(info) || 'v—';
 }
 
+// A PWA left open (never fully closed, e.g. backgrounded on a tablet) keeps
+// running whatever JS it already loaded — a new service worker installing in
+// the background does not change that until the page actually reloads. Left
+// alone, a fix can ship and still not be visible to someone whose tab has
+// simply never been closed since before it. Surface it explicitly instead of
+// relying on the version badge being noticed.
+function showUpdateBanner() {
+  if (document.getElementById('update-banner')) return;
+  const bar = document.createElement('div');
+  bar.id = 'update-banner';
+  bar.className = 'update-banner';
+  bar.append(document.createTextNode('An update is ready. '));
+  const btn = document.createElement('button');
+  btn.textContent = 'Reload';
+  btn.onclick = () => location.reload();
+  bar.append(btn);
+  document.body.prepend(bar);
+}
+
+function watchForUpdates(reg) {
+  // A new worker already finished installing while this tab was open.
+  if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner();
+  reg.addEventListener('updatefound', () => {
+    const installing = reg.installing;
+    if (!installing) return;
+    installing.addEventListener('statechange', () => {
+      if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateBanner();
+      }
+    });
+  });
+}
+
 async function boot() {
   await applyEinkMode();
   await seedDefaultPlan();
@@ -73,7 +106,7 @@ async function boot() {
   route();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('SW registration failed:', err));
+    navigator.serviceWorker.register('/sw.js').then(watchForUpdates).catch((err) => console.warn('SW registration failed:', err));
   }
 }
 

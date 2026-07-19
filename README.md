@@ -73,6 +73,8 @@ There is no build step, so there's no git SHA or build number available at runti
 
 **Every push bumps two things in lockstep:** `version.json`'s `version` field, and `sw.js`'s `CACHE` constant (`'bayaz-vN'`, same N). Browsers only reinstall a service worker — and thus refresh everything it caches — when `sw.js`'s own bytes change. `version.json` is fetched network-first regardless, so if only it is bumped, the badge silently goes ahead of the actual cached app shell (users see a new version number but stale JS/HTML underneath). Keeping the counter embedded directly in `sw.js` guarantees the two can't drift apart.
 
+**A new service worker installing does not update an already-open tab by itself** — `skipWaiting`/`clients.claim` make it take over new *requests*, but JS already loaded into memory keeps running until the page actually reloads. A PWA left open for days (never fully closed, just backgrounded) can sit on old code indefinitely even though the deploy behind it is current. `app.js` watches the registration for this and shows a plain "An update is ready — Reload" bar the moment a new worker finishes installing, rather than relying on someone noticing the version badge changed.
+
 ## Non-negotiables held
 
 - API key lives only in the Worker environment.

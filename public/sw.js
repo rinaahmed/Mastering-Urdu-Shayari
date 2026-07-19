@@ -9,7 +9,7 @@
 // can go stale-vs-live (it's fetched network-first) while the rest of the
 // app silently keeps serving whatever was cached at the last sw.js change.
 
-const CACHE = 'bayaz-v6';
+const CACHE = 'bayaz-v7';
 
 const SHELL = [
   '/',
