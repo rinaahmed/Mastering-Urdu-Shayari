@@ -145,11 +145,17 @@ function renderPager(root, plan, session, screen) {
   const next = el('button', 'pager-btn primary', 'Next ›');
   next.disabled = session.index >= session.screens.length - 1;
   const expectsResponse = screen.kind === 'generate' && screen.block && screen.block.expectsResponse;
-  const needsAction = ((screen.kind === 'drill' || screen.kind === 'flag') || expectsResponse) && !screen.done;
+  // A generate block that hasn't successfully produced text yet — still
+  // loading, or the call failed — must not be skippable. Without this, Next
+  // stays clickable through a tutor error and silently marks the screen
+  // done, which for a lesson whose only content is that one block means it
+  // "completes" without the person ever having seen real material.
+  const generateNotReady = screen.kind === 'generate' && !screen.generatedText;
+  const needsAction = ((screen.kind === 'drill' || screen.kind === 'flag') || expectsResponse || generateNotReady) && !screen.done;
   if (needsAction) next.disabled = true;
   next.onclick = async () => {
     const autoCompletable = ['prose', 'example', 'blocked'].includes(screen.kind) ||
-      (screen.kind === 'generate' && !expectsResponse);
+      (screen.kind === 'generate' && !expectsResponse && !generateNotReady);
     if (autoCompletable && !screen.done) {
       await markScreenDone(session, session.index);
     }
@@ -188,13 +194,20 @@ async function renderGenerate(body, root, plan, session, screen) {
       screen.generatedText = text;
       if (screen.block.expectsResponse) screen.conversation = [{ role: 'tutor', text }];
       await saveSession(session);
+      // The pager's Next state was fixed at render time, before this async
+      // call resolved — re-render so it picks up the now-successful result.
+      renderToday(root);
+      return;
     } catch (e) {
-      out.textContent = e instanceof OfflineError
-        ? 'Offline — this block needs a connection to expand. The plan\'s own material continues on the next screen.'
-        : `Tutor error: ${e.message}`;
-      return; // nothing generated yet — no response to collect
+      out.innerHTML = '';
+      out.append(el('p', null, e instanceof OfflineError
+        ? 'Offline — this block needs a connection to expand.'
+        : `Tutor error: ${e.message}`));
+      const retry = el('button', null, 'Retry');
+      retry.onclick = () => renderToday(root);
+      out.append(retry);
+      return; // nothing generated — Next stays disabled, no fallback content
     }
-    out.remove();
   }
 
   if (!screen.block.expectsResponse) {
