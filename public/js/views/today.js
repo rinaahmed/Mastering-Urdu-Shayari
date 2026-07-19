@@ -179,64 +179,84 @@ function renderExample(body, root, plan, session, screen) {
 }
 
 async function renderGenerate(body, root, plan, session, screen) {
-  if (screen.generatedText) {
-    body.append(md(screen.generatedText));
-  } else {
+  if (!screen.generatedText) {
     const out = el('div', 'tutor-out', 'Preparing…');
     body.append(out);
     try {
       const context = await buildContext(plan, session, screen, null, null);
       const text = await generate(context, screen.block.body);
       screen.generatedText = text;
+      if (screen.block.expectsResponse) screen.conversation = [{ role: 'tutor', text }];
       await saveSession(session);
-      out.textContent = '';
-      out.append(md(text));
     } catch (e) {
       out.textContent = e instanceof OfflineError
         ? 'Offline — this block needs a connection to expand. The plan\'s own material continues on the next screen.'
         : `Tutor error: ${e.message}`;
       return; // nothing generated yet — no response to collect
     }
+    out.remove();
   }
 
-  if (!screen.block.expectsResponse) return;
-
-  // The generated text poses a question rather than just presenting
-  // material — collect a typed response and have the tutor evaluate it
-  // (open-ended judgment, not pass/fail) before this screen counts as done.
-  if (screen.done) {
-    if (screen.response) body.append(el('p', 'response', `You: ${screen.response}`));
-    if (screen.feedbackText) body.append(md(screen.feedbackText));
+  if (!screen.block.expectsResponse) {
+    body.append(md(screen.generatedText));
     return;
   }
 
+  // Open-ended exchange, not a single reply-then-done: every turn so far,
+  // then — unless the learner has already chosen to stop — both a reply box
+  // and a "Done" button. Continuing or wrapping up is the learner's call
+  // each time, not something the screen decides for them.
+  const conversation = screen.conversation || [{ role: 'tutor', text: screen.generatedText }];
+  conversation.forEach((turn) => {
+    if (turn.role === 'user') body.append(el('p', 'response', `You: ${turn.text}`));
+    else body.append(md(turn.text));
+  });
+
+  if (screen.done) return;
+
+  body.append(el('p', 'muted small', 'Reply to keep going, or tap Done when you\'re ready to move on.'));
   const input = el('textarea', 'answer');
-  input.placeholder = 'your response…';
+  input.placeholder = 'your reply…';
   body.append(input);
-  const submit = el('button', 'primary', 'Submit');
+
+  const row = el('div', 'btn-row');
+  const send = el('button', 'primary', 'Send');
+  const doneBtn = el('button', null, 'Done — move on');
   const out = el('div', 'tutor-out');
-  submit.onclick = async () => {
+
+  send.onclick = async () => {
     const value = input.value.trim();
     if (!value) return;
-    submit.disabled = true;
+    send.disabled = true;
+    doneBtn.disabled = true;
     out.textContent = 'Asking the tutor…';
     try {
       const context = await buildContext(plan, session, screen, null, null);
-      const feedback = await generate(context,
-        `The learner's response to the above was: "${value}"\n\nGive feedback on it, per the standing tutor rules — point at where it's wrong and why rather than just correcting it, confirm plainly if it's right.`);
-      screen.response = value;
-      screen.feedbackText = feedback;
-      screen.done = true;
+      const transcript = conversation.map((t) => `${t.role === 'tutor' ? 'Tutor' : 'Learner'}: ${t.text}`).join('\n\n');
+      const reply = await generate(context,
+        `This is a continuing conversation about the exercise above.\n\n${transcript}\n\nLearner: ${value}\n\nContinue the conversation naturally, per your standing instructions — do not restart or summarize what's already been said.`);
+      conversation.push({ role: 'user', text: value });
+      conversation.push({ role: 'tutor', text: reply });
+      screen.conversation = conversation;
       await saveSession(session);
       renderToday(root);
     } catch (e) {
-      submit.disabled = false;
+      send.disabled = false;
+      doneBtn.disabled = false;
       out.textContent = e instanceof OfflineError
-        ? 'Offline — feedback needs a connection. Try again once online; your response is not lost.'
+        ? 'Offline — replying needs a connection. Try again once online; nothing is lost.'
         : `Tutor error: ${e.message}`;
     }
   };
-  body.append(submit, out);
+
+  doneBtn.onclick = async () => {
+    screen.done = true;
+    await saveSession(session);
+    renderToday(root);
+  };
+
+  row.append(send, doneBtn);
+  body.append(input, row, out);
 }
 
 function renderReflect(body, root, plan, session, screen) {

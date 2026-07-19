@@ -91,6 +91,7 @@ export async function startSession() {
       result: null,        // {correct, detail, provisional?, source, ...}
       note: null,          // reflect responses
       generatedText: null, // cached generator output for generate screens
+      conversation: null,  // generate screens with expectsResponse: [{role, text}, ...]
       ledgerDeltas: [],
       artifactId: null
     })),
